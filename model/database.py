@@ -12,64 +12,53 @@ def setup_database():
         db.executescript(open('resources/schema.sql', 'r').read())
         db.commit()
 
-    except sqlite3.OperationalError:
+    except sqlite3.OperationalError as e:
         pass
 
 
 class Base:
     @classmethod
     def select_parent(cls, *args):
-        with sqlite3.connect(db_location).cursor() as cursor:
-            cursor.execute(cls.__select_parent_query(args))
-            return cursor.fetchone()
+        with sqlite3.connect(db_location) as conn:
+            cursor = conn.cursor()
+            query = cls.select_parent_query(*args)
+            cursor.execute(query)
+            result = cursor.fetchone()
+            return result[0] if result else []
 
     @classmethod
     def insert_parent(cls, *args):
-        with sqlite3.connect(db_location).cursor() as cursor:
-            cursor.execute(cls.__insert_parent_query(args))
+        with sqlite3.connect(db_location) as conn:
+            cursor = conn.cursor()
+            query = cls.insert_parent_query(*args)
+            cursor.execute(query)
+            return cursor.lastrowid
 
     @classmethod
     def select_one(cls, *args):
-        with sqlite3.connect(db_location).cursor() as cursor:
-            cursor.execute(cls.__select_one_query(args))
-            return cursor.fetchone()
+        with sqlite3.connect(db_location) as conn:
+            cursor = conn.cursor()
+            query = cls.select_one_query(*args)
+            cursor.execute(query)
+            result = cursor.fetchone()
+            return result[0] if result else []
 
     @classmethod
     def select_all(cls):
-        with sqlite3.connect(db_location).cursor() as cursor:
-            cursor.execute(cls.__select_all_query())
+        with sqlite3.connect(db_location) as conn:
+            cursor = conn.cursor()
+            query = cls.select_all_query()
+            cursor.execute(query)
             return cursor.fetchall()
 
     @classmethod
     def insert(cls, *args):
         with sqlite3.connect(db_location) as conn:
-            conn.execute(cls.__insert_query(args))
+            query = cls.insert_query(*args)
+            conn.execute(query)
 
     @classmethod
     def delete(cls, *args):
         with sqlite3.connect(db_location) as conn:
-            conn.execute(cls.__delete_query(args))
-
-    @classmethod
-    def __select_all_query(cls):
-        return ''
-
-    @classmethod
-    def __select_one_query(cls, *args):
-        return ''
-
-    @classmethod
-    def __insert_query(cls, *args):
-        return ''
-
-    @classmethod
-    def __delete_query(cls, *args):
-        return ''
-
-    @classmethod
-    def __select_parent_query(cls, *args):
-        return ''
-
-    @classmethod
-    def __insert_parent_query(cls, *args):
-        return ''
+            query = cls.delete_query(*args)
+            conn.execute(query)

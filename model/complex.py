@@ -3,20 +3,20 @@ from model.database import Base
 
 class Complex(Base):
     @classmethod
-    def __select_all_query(cls):
+    def select_all_query(cls):
         return 'SELECT * FROM Complex;'
 
     @classmethod
-    def __select_one_query(cls, *args):
+    def select_one_query(cls, *args):
         complex_name = args[0]
         return f'SELECT * FROM Complex WHERE Complex.name={complex_name};'
 
     @classmethod
-    def __insert_query(cls, *args):
+    def insert_query(cls, *args):
         name = args[0]
         return f'INSERT INTO COMPLEX (name) VALUES ("{name}")'
 
     @classmethod
-    def __delete_query(cls, *args):
+    def delete_query(cls, *args):
         name = args[0]
         return f'DELETE FROM Complex WHERE Complex.name="{name}";'
