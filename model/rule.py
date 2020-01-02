@@ -3,6 +3,13 @@ from model.database import Base
 
 class Rule(Base):
     @classmethod
+    def select_all_from_parent_query(cls, *args):
+        complex_name = args[0]
+        complex_id = cls.select_parent(complex_name)
+
+        return f'SELECT * FROM Rule WHERE Rule.complex_id={complex_id};'
+
+    @classmethod
     def select_all_query(cls):
         return 'SELECT * FROM Rule;'
 
@@ -12,8 +19,6 @@ class Rule(Base):
         complex_name = args[2]
 
         complex_id = cls.select_parent(complex_name)
-        if not complex_id:
-            complex_id = cls.insert_parent(complex_name)
 
         return f'SELECT * FROM Rule WHERE Rule.text="{rule_text}" AND Rule.complex_id={complex_id};'
 
@@ -33,7 +38,7 @@ class Rule(Base):
         rule_text = args[0]
         complex_name = args[1]
 
-        complex_id = cls.select_parent(complex_name) or -1
+        complex_id = cls.select_parent(complex_name)
 
         return f'DELETE FROM Rule WHERE AND Rule.text="{rule_text}" AND Rule.complex_id={complex_id};'
 

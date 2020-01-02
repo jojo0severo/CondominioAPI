@@ -3,6 +3,18 @@ from model.database import Base
 
 class Complex(Base):
     @classmethod
+    def select_parent_query(cls, *args):
+        return ''
+
+    @classmethod
+    def insert_parent_query(cls, *args):
+        return ''
+
+    @classmethod
+    def select_all_from_parent_query(cls, *args):
+        return ''
+
+    @classmethod
     def select_all_query(cls):
         return 'SELECT * FROM Complex;'
 

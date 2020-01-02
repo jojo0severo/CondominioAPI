@@ -3,45 +3,60 @@ from model.database import Base
 
 class Apartment(Base):
     @classmethod
+    def select_all_from_parent_query(cls, *args):
+        tower_name = args[0]
+        complex_name = args[1]
+
+        tower_id = cls.select_parent(0, tower_name, complex_name)
+
+        return f'SELECT * FROM Apartmente WHERE Apartment.tower_id={tower_id};'
+
+    @classmethod
     def select_all_query(cls):
         return 'SELECT * FROM Apartment;'
 
     @classmethod
     def select_one_query(cls, *args):
-        apt_id= args[0]
-        tower_id = args[0]
-        return f'SELECT * FROM Apartment WHERE Apartment.id={apt_id} AND Apartment.tower_id="{tower_id}";'
+        apt_number = args[0]
+        tower_name = args[1]
+        complex_name = args[2]
+
+        tower_id = cls.select_parent(0, tower_name, complex_name)
+
+        return f'SELECT * FROM Apartment WHERE Apartment.number={apt_number} AND Apartment.tower_id="{tower_id}";'
 
     @classmethod
     def insert_query(cls, *args):
-        apt_id = args[0]
-        tower_id = args[1]
+        apt_number = args[0]
+        tower_name = args[1]
         complex_name = args[2]
 
-        if not cls.select_parent(0, tower_id, complex_name):
-            cls.insert_parent(0, tower_id, complex_name)
+        tower_id = cls.select_parent(0, tower_name, complex_name)
+        if not tower_id:
+            tower_id = cls.insert_parent(0, tower_name, complex_name)
 
-        return f'INSERT INTO Apartment (id, tower_id) VALUES ({apt_id}, "{tower_id}");'
+        return f'INSERT INTO Apartment (number, tower_id) VALUES ({apt_number}, {tower_id});'
 
     @classmethod
     def delete_query(cls, *args):
-        apt_id = args[0]
-        tower_id = args[1]
+        apt_number = args[0]
+        tower_name = args[1]
+        complex_name = args[2]
 
-        return f'DELETE FROM Apartment WHERE Apartment.id={apt_id } AND Apartment.tower_id="{tower_id}";'
+        tower_id = cls.select_parent(0, tower_name, complex_name)
+
+        return f'DELETE FROM Apartment WHERE Apartment.number={apt_number} AND Apartment.tower_id="{tower_id}";'
 
     @classmethod
     def select_parent_query(cls, *args):
         parent_number = args[0]
         if parent_number == 0:
-            tower_id = args[1]
+            tower_name = args[1]
             complex_name = args[2]
 
             complex_id = cls.select_parent(1, complex_name)
-            if not complex_id:
-                complex_id = cls.insert_parent(1, complex_name)
 
-            return f'SELECT id FROM Tower WHERE Tower.id="{tower_id}" AND Tower.complex_id={complex_id};'
+            return f'SELECT id FROM Tower WHERE Tower.name="{tower_name}" AND Tower.complex_id={complex_id};'
 
         elif parent_number == 1:
             complex_name = args[1]
@@ -55,14 +70,14 @@ class Apartment(Base):
     def insert_parent_query(cls, *args):
         parent_number = args[0]
         if parent_number == 0:
-            tower_id = args[1]
+            tower_name = args[1]
             complex_name = args[2]
 
             complex_id = cls.select_parent(1, complex_name)
             if not complex_id:
                 complex_id = cls.insert_parent(1, complex_name)
 
-            return f'INSERT INTO Tower (id, complex_id) VALUES ("{tower_id}", {complex_id});'
+            return f'INSERT INTO Tower (tower_name, complex_id) VALUES ("{tower_name}", {complex_id});'
 
         elif parent_number == 1:
             complex_name = args[1]

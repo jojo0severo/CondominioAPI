@@ -52,6 +52,14 @@ class Base:
             return cursor.fetchall()
 
     @classmethod
+    def select_all_from_parent(cls):
+        with sqlite3.connect(db_location) as conn:
+            cursor = conn.cursor()
+            query = cls.select_all_from_parent_query()
+            cursor.execute(query)
+            return cursor.fetchall()
+
+    @classmethod
     def insert(cls, *args):
         with sqlite3.connect(db_location) as conn:
             query = cls.insert_query(*args)
@@ -62,3 +70,31 @@ class Base:
         with sqlite3.connect(db_location) as conn:
             query = cls.delete_query(*args)
             conn.execute(query)
+
+    @classmethod
+    def select_parent_query(cls, *args):
+        raise NotImplementedError
+
+    @classmethod
+    def insert_parent_query(cls, *args):
+        raise NotImplementedError
+
+    @classmethod
+    def select_one_query(cls, *args):
+        raise NotImplementedError
+
+    @classmethod
+    def select_all_query(cls, *args):
+        raise NotImplementedError
+
+    @classmethod
+    def select_all_from_parent_query(cls, *args):
+        raise NotImplementedError
+
+    @classmethod
+    def insert_query(cls, *args):
+        raise NotImplementedError
+
+    @classmethod
+    def delete_query(cls, *args):
+        raise NotImplementedError

@@ -3,6 +3,12 @@ from model.database import Base
 
 class Shop(Base):
     @classmethod
+    def select_all_from_parent_query(cls, *args):
+        complex_name = args[0]
+        complex_id = cls.select_parent(complex_name)
+        return f'SELECT * FROM Shop WHERE Shop.complex_id={complex_id};'
+
+    @classmethod
     def select_all_query(cls):
         return 'SELECT * FROM Shop;'
 
@@ -12,8 +18,6 @@ class Shop(Base):
         complex_name = args[1]
 
         complex_id = cls.select_parent(complex_name)
-        if not complex_id:
-            complex_id = cls.insert_parent(complex_name)
 
         return f'SELECT * FROM Shop WHERE Shop.type="{shop_type}" AND Shop.complex_id={complex_id};'
 
@@ -33,7 +37,7 @@ class Shop(Base):
         shop_type = args[0]
         complex_name = args[1]
 
-        complex_id = cls.select_parent(complex_name) or -1
+        complex_id = cls.select_parent(complex_name)
 
         return f'DELETE FROM Shop WHERE Tower.type="{shop_type}" AND Shop.complex_id={complex_id};'
 
