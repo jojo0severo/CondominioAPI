@@ -21,7 +21,7 @@ class Complex(Base):
     @classmethod
     def select_one_query(cls, *args):
         complex_name = args[0]
-        return f'SELECT * FROM Complex WHERE Complex.name={complex_name};'
+        return f'SELECT * FROM Complex WHERE Complex.name="{complex_name}";'
 
     @classmethod
     def insert_query(cls, *args):

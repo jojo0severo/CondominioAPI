@@ -2,7 +2,8 @@
 
 CREATE TABLE Complex (
     id   INTEGER      PRIMARY KEY AUTOINCREMENT,
-    name VARCHAR (35) PRIMARY KEY
+    name VARCHAR (50) NOT NULL,
+    UNIQUE (name)
 );
 
 CREATE TABLE Tower (
@@ -16,7 +17,7 @@ CREATE TABLE Tower (
 CREATE TABLE Apartment (
     id       INTEGER     PRIMARY KEY AUTOINCREMENT,
     number   INTEGER     NOT NULL,
-    tower_id VARCHAR (2) NOT NULL,
+    tower_id INTEGER     NOT NULL,
     UNIQUE (number, tower_id),
     FOREIGN KEY (tower_id) REFERENCES Tower(id) ON DELETE CASCADE
 );
@@ -30,21 +31,14 @@ CREATE TABLE Resident (
     FOREIGN KEY (apt_id) REFERENCES Apartment(id) ON DELETE CASCADE
 );
 
-CREATE TABLE Role (
-    id          INTEGER      PRIMARY KEY AUTOINCREMENT,
-    description VARCHAR (20) NOT NULL,
-    UNIQUE (description)
-);
-
 CREATE TABLE Employee (
     id         INTEGER      PRIMARY KEY AUTOINCREMENT,
     cpf        VARCHAR (11) NOT NULL,
     name       VARCHAR (40) NOT NULL,
     age        INTEGER      NOT NULL,
-    role       INTEGER      NOT NULL,
+    role       VARCHAR (20) NOT NULL,
     complex_id INTEGER      NOT NULL,
     UNIQUE (cpf, role, complex_id),
-    FOREIGN KEY (role)       REFERENCES Role(id)    ON DELETE CASCADE,
     FOREIGN KEY (complex_id) REFERENCES Complex(id) ON DELETE CASCADE
 );
 
@@ -76,6 +70,7 @@ CREATE TABLE Event (
     title      VARCHAR (30)  NOT NULL,
     text       VARCHAR (200),
     complex_id INTEGER       NOT NULL,
+    UNIQUE (type, title, complex_id),
     FOREIGN KEY (complex_id) REFERENCES Complex(id)
 );
 
@@ -107,6 +102,7 @@ CREATE TABLE Service (
     company VARCHAR (30) NOT NULL,
     type    VARCHAR (30) NOT NULL,
     apt_id  INTEGER      NOT NULL,
+    UNIQUE (name, company, type),
     FOREIGN KEY (apt_id) REFERENCES Apartment(id) ON DELETE CASCADE
 );
 
@@ -116,6 +112,7 @@ CREATE TABLE ServiceDay (
     weekday      INTEGER  NOT NULL,
     from_date    DATETIME NOT NULL,
     to_date      DATETIME NOT NULL,
+    UNIQUE (service_id, weekday, from_date, to_date),
     FOREIGN KEY (service_id) REFERENCES Service(id)
 );
 
@@ -123,6 +120,7 @@ CREATE TABLE Rule (
     id         INTEGER       PRIMARY KEY AUTOINCREMENT,
     text       VARCHAR (150) NOT NULL,
     complex_id INTEGER       NOT NULL,
+    UNIQUE (text, complex_id),
     FOREIGN KEY (complex_id) REFERENCES Complex(id) ON DELETE CASCADE
 );
 
@@ -131,5 +129,14 @@ CREATE TABLE Warning (
     type       INTEGER       NOT NULL,
     text       VARCHAR (150) NOT NULL,
     tower_id   INTEGER       NOT NULL,
+    UNIQUE (text, tower_id),
     FOREIGN KEY (tower_id) REFERENCES Tower(id) ON DELETE CASCADE
 );
+
+
+ALTER TABLE Complex   ADD INDEX Complex  (name)                USING HASH;
+ALTER TABLE Tower     ADD INDEX Tower    (name)                USING HASH;
+ALTER TABLE Apartment ADD INDEX Apartment(number)              USING HASH;
+ALTER TABLE Event     ADD INDEX Event    (type, title)         USING BTREE;
+ALTER TABLE Service   ADD INDEX Service  (name, company, type) USING BTREE;
+ALTER TABLE Shop      ADD INDEX Shop     (type)                USING BTREE;

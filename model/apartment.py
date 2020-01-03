@@ -9,7 +9,7 @@ class Apartment(Base):
 
         tower_id = cls.select_parent(0, tower_name, complex_name)
 
-        return f'SELECT * FROM Apartmente WHERE Apartment.tower_id={tower_id};'
+        return f'SELECT * FROM Apartment WHERE Apartment.tower_id={tower_id};'
 
     @classmethod
     def select_all_query(cls):
@@ -23,7 +23,7 @@ class Apartment(Base):
 
         tower_id = cls.select_parent(0, tower_name, complex_name)
 
-        return f'SELECT * FROM Apartment WHERE Apartment.number={apt_number} AND Apartment.tower_id="{tower_id}";'
+        return f'SELECT * FROM Apartment WHERE Apartment.number={apt_number} AND Apartment.tower_id={tower_id};'
 
     @classmethod
     def insert_query(cls, *args):
@@ -45,7 +45,7 @@ class Apartment(Base):
 
         tower_id = cls.select_parent(0, tower_name, complex_name)
 
-        return f'DELETE FROM Apartment WHERE Apartment.number={apt_number} AND Apartment.tower_id="{tower_id}";'
+        return f'DELETE FROM Apartment WHERE Apartment.number={apt_number} AND Apartment.tower_id={tower_id};'
 
     @classmethod
     def select_parent_query(cls, *args):
@@ -77,7 +77,7 @@ class Apartment(Base):
             if not complex_id:
                 complex_id = cls.insert_parent(1, complex_name)
 
-            return f'INSERT INTO Tower (tower_name, complex_id) VALUES ("{tower_name}", {complex_id});'
+            return f'INSERT INTO Tower (name, complex_id) VALUES ("{tower_name}", {complex_id});'
 
         elif parent_number == 1:
             complex_name = args[1]

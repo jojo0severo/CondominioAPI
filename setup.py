@@ -7,14 +7,14 @@ from model.database import db_location, setup_database
 
 setup_database()
 
-format = '%Y-%m-%d %H:%M:%S'
-
 app = Flask(__name__)
 app.config['JSON_SORT_KEYS'] = False
 app.config['SECRET_KEY'] = secrets.token_urlsafe(10)
 app.config['SQLALCHEMY_DATABASE_URI'] = db_location
 
 socket = SocketIO(app)
+
+date_format = '%Y-%m-%d %H:%M:%S'
 
 
 def session_decorator(function):

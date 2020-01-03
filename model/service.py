@@ -1,7 +1,7 @@
 from model.database import Base
 
 
-class Resident(Base):
+class Service(Base):
     @classmethod
     def select_all_from_parent_query(cls, *args):
         apt_number = args[0]
@@ -10,40 +10,43 @@ class Resident(Base):
 
         apt_id = cls.select_parent(0, apt_number, tower_name, complex_name)
 
-        return f'SELECT * FROM Resident WHERE Resident.apt_id={apt_id};'
+        return f'SELECT * FROM Service WHERE Service.apt_id={apt_id};'
 
     @classmethod
     def select_all_query(cls):
-        return 'SELECT * FROM Apartment;'
+        return 'SELECT * FROM Service;'
 
     @classmethod
     def select_one_query(cls, *args):
-        cpf = args[0]
+        name = args[0]
+        company = args[1]
+        service_type = args[2]
 
-        return f'SELECT * FROM Resident WHERE Resident.cpf="{cpf}";'
+        return f'SELECT * FROM Service WHERE Service.name="{name}" AND Service.company="{company}" AND Service.type="{service_type}";'
 
     @classmethod
     def insert_query(cls, *args):
-        cpf = args[0]
-        name = args[1]
-        email = args[2]
-        contact_number = args[3]
-        apt_number = args[4]
-        tower_name = args[5]
-        complex_name = args[6]
+        name = args[0]
+        company = args[1]
+        service_type = args[2]
+        apt_number = args[3]
+        tower_name = args[4]
+        complex_name = args[5]
 
         apt_id = cls.select_parent(0, apt_number, tower_name, complex_name)
         if not apt_id:
             apt_id = cls.insert_parent(0, apt_number, tower_name, complex_name)
 
-        return f'INSERT INTO Resident (cpf, name, email, contact_number, apt_id) ' \
-               f'VALUES ("{cpf}", "{name}", "{email}", "{contact_number}", {apt_id});'
+        return f'INSERT INTO Service (name, company, type, apt_id) ' \
+               f'VALUES ("{name}", "{company}", "{service_type}", {apt_id});'
 
     @classmethod
     def delete_query(cls, *args):
-        cpf = args[0]
+        name = args[0]
+        company = args[1]
+        service_type = args[2]
 
-        return f'DELETE FROM Resident WHERE Resident.cpf="{cpf}";'
+        return f'DELETE FROM Service WHERE Service.name="{name}" AND Service.company="{company}" AND Service.type="{service_type}";'
 
     @classmethod
     def select_parent_query(cls, *args):
@@ -71,7 +74,7 @@ class Resident(Base):
             return f'SELECT id FROM Complex WHERE Complex.name="{complex_name}";'
 
         else:
-            raise RuntimeError(f'Internal error on resident parent selection. Arguments: {args}.')
+            raise RuntimeError(f'Internal error on service parent selection. Arguments: {args}.')
 
     @classmethod
     def insert_parent_query(cls, *args):
@@ -103,4 +106,4 @@ class Resident(Base):
             return f'INSERT INTO Complex (name) VALUES ("{complex_name}");'
 
         else:
-            raise RuntimeError(f'Internal error on resident parent insertion. Arguments: {args}.')
+            raise RuntimeError(f'Internal error on service parent insertion. Arguments: {args}.')

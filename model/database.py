@@ -13,6 +13,7 @@ def setup_database():
         db.commit()
 
     except sqlite3.OperationalError as e:
+        print(e)
         pass
 
 
@@ -24,7 +25,7 @@ class Base:
             query = cls.select_parent_query(*args)
             cursor.execute(query)
             result = cursor.fetchone()
-            return result[0] if result else []
+            return result[0] if result else 0
 
     @classmethod
     def insert_parent(cls, *args):
@@ -41,7 +42,7 @@ class Base:
             query = cls.select_one_query(*args)
             cursor.execute(query)
             result = cursor.fetchone()
-            return result[0] if result else []
+            return result[0] if result else ()
 
     @classmethod
     def select_all(cls):
@@ -52,10 +53,10 @@ class Base:
             return cursor.fetchall()
 
     @classmethod
-    def select_all_from_parent(cls):
+    def select_all_from_parent(cls, *args):
         with sqlite3.connect(db_location) as conn:
             cursor = conn.cursor()
-            query = cls.select_all_from_parent_query()
+            query = cls.select_all_from_parent_query(*args)
             cursor.execute(query)
             return cursor.fetchall()
 
