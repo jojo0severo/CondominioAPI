@@ -39,7 +39,7 @@ class Shop(Base):
 
         complex_id = cls.select_parent(complex_name)
 
-        return f'DELETE FROM Shop WHERE Tower.type="{shop_type}" AND Shop.complex_id={complex_id};'
+        return f'DELETE FROM Shop WHERE Shop.type="{shop_type}" AND Shop.complex_id={complex_id};'
 
     @classmethod
     def select_parent_query(cls, *args):

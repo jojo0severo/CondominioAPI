@@ -7,9 +7,9 @@ CREATE TABLE Complex (
 
 CREATE TABLE Tower (
     id          INTEGER     PRIMARY KEY AUTOINCREMENT,
-    tower_name  VARCHAR (2) NOT NULL,
+    name  VARCHAR (2) NOT NULL,
     complex_id  INTEGER     NOT NULL,
-    UNIQUE (tower_name, complex_id),
+    UNIQUE (name, complex_id),
     FOREIGN KEY (complex_id) REFERENCES Complex(id) ON DELETE CASCADE
 );
 
@@ -17,7 +17,7 @@ CREATE TABLE Apartment (
     id         INTEGER     PRIMARY KEY AUTOINCREMENT,
     number     INTEGER     NOT NULL,
     tower_id   VARCHAR (2) NOT NULL,
-    UNION (number, tower_id),
+    UNIQUE (number, tower_id),
     FOREIGN KEY (tower_id) REFERENCES Tower(id) ON DELETE CASCADE
 );
 
@@ -45,7 +45,7 @@ CREATE TABLE Employee (
     complex_id INTEGER      NOT NULL,
     UNIQUE (cpf, role, complex_id),
     FOREIGN KEY (role)       REFERENCES Role(id) ON DELETE CASCADE,
-    FOREIGN KEY (complex_id) REFERENCES Complex(complex_id) ON DELETE CASCADE
+    FOREIGN KEY (complex_id) REFERENCES Complex(id) ON DELETE CASCADE
 );
 
 CREATE TABLE Shop (
@@ -85,7 +85,7 @@ CREATE TABLE ComplexEvent (
     to_date     DATETIME NOT NULL,
     event_id    INTEGER  NOT NULL,
     employee_id INTEGER  NOT NULL,
-    UNIQUE (type, title, from_date, to_date, employee_id),
+    UNIQUE (from_date, to_date, event_id),
     FOREIGN KEY (event_id)    REFERENCES Event(id) ON DELETE CASCADE,
     FOREIGN KEY (employee_id) REFERENCES Employee(id) ON DELETE CASCADE
 );
@@ -96,7 +96,7 @@ CREATE TABLE ResidentEvent (
     to_date     DATETIME NOT NULL,
     event_id    INTEGER  NOT NULL,
     apt_id      INTEGER  NOT NULL,
-    UNIQUE(type, title, from_date, to_date, complex_id),
+    UNIQUE(from_date, to_date, event_id),
     FOREIGN KEY (event_id) REFERENCES Event(id) ON DELETE CASCADE,
     FOREIGN KEY (apt_id)   REFERENCES Apartment(id) ON DELETE CASCADE
 );
@@ -118,9 +118,9 @@ CREATE TABLE Weekday(
 CREATE TABLE ServiceWeekday(
     service_name VARCHAR (50) NOT NULL,
     weekday_name INTEGER      NOT NULL,
-    PRIMARY KEY(service_name, week_day),
-    FOREIGN KEY service_name REFERENCES Services(name),
-    FOREIGN KEY weekday_name REFERENCES Weekday(week_day)
+    PRIMARY KEY (service_name, weekday_name),
+    FOREIGN KEY (service_name) REFERENCES Services(name),
+    FOREIGN KEY (weekday_name) REFERENCES Weekday(week_day)
 );
 
 CREATE TABLE Rule (

@@ -10,42 +10,73 @@ class Warning(Base):
     def select_one_query(cls, *args):
         warning_type = args[0]
         warning_text = args[1]
-        complex_name = args[2]
+        tower_name = args[2]
+        complex_name = args[3]
 
-        complex_id = cls.select_parent(complex_name)
-        if not complex_id:
-            complex_id = cls.insert_parent(complex_name)
+        tower_id = cls.select_parent(0, tower_name, complex_name)
 
-        return f'SELECT * FROM Warning WHERE Warning.type={warning_type} AND Warning.text="{warning_text}" AND Warning.complex_id={complex_id};'
+        return f'SELECT * FROM Warning WHERE Warning.type={warning_type} AND Warning.text="{warning_text}" AND Warning.tower_id={tower_id};'
 
     @classmethod
     def insert_query(cls, *args):
         warning_type = args[0]
         warning_text = args[1]
-        complex_name = args[2]
+        tower_name = args[2]
+        complex_name = args[3]
 
-        complex_id = cls.select_parent(complex_name)
-        if not complex_id:
-            complex_id = cls.insert_parent(complex_name)
+        tower_id = cls.select_parent(0, tower_name, complex_name)
+        if not tower_id:
+            tower_id = cls.insert_parent(0, tower_name, complex_name)
 
-        return f'INSERT INTO Warning (type, text, complex_id) VALUES ({warning_type}, "{warning_text}", {complex_id});'
+        return f'INSERT INTO Warning (type, text, tower_id) VALUES ({warning_type}, "{warning_text}", {tower_id});'
 
     @classmethod
     def delete_query(cls, *args):
         warning_type = args[0]
         warning_text = args[1]
-        complex_name = args[2]
+        tower_name = args[2]
+        complex_name = args[3]
 
-        complex_id = cls.select_parent(complex_name) or -1
+        tower_id = cls.select_parent(0, tower_name, complex_name)
 
-        return f'DELETE FROM Warning WHERE Warning.type={warning_type} AND Warning.text="{warning_text}" AND Warning.complex_id={complex_id};'
+        return f'DELETE FROM Warning WHERE Warning.type={warning_type} AND Warning.text="{warning_text}" AND Warning.tower_id={tower_id};'
 
     @classmethod
     def select_parent_query(cls, *args):
-        complex_name = args[0]
-        return f'SELECT id FROM Complex WHERE Complex.name="{complex_name}";'
+        parent_number = args[0]
+        if parent_number == 0:
+            tower_name = args[1]
+            complex_name = args[2]
+
+            complex_id = cls.select_parent(1, complex_name)
+
+            return f'SELECT id FROM Tower WHERE Tower.name="{tower_name}" AND Tower.complex_id={complex_id};'
+
+        elif parent_number == 1:
+            complex_name = args[1]
+
+            return f'SELECT id FROM Complex WHERE Complex.name="{complex_name}";'
+
+        else:
+            raise RuntimeError(f'Internal error on warning parent selection. Arguments: {args}.')
 
     @classmethod
     def insert_parent_query(cls, *args):
-        complex_name = args[0]
-        return f'INSERT INTO Complex (name) VALUES ("{complex_name}");'
+        parent_number = args[0]
+        if parent_number == 0:
+            tower_name = args[1]
+            complex_name = args[2]
+
+            complex_id = cls.select_parent(1, complex_name)
+            if not complex_id:
+                complex_id = cls.insert_parent(1, complex_name)
+
+            return f'INSERT INTO Tower (name, complex_id) VALUES ("{tower_name}", {complex_id});'
+
+        elif parent_number == 1:
+            complex_name = args[1]
+
+            return f'INSERT INTO Complex (name) VALUES ("{complex_name}");'
+
+        else:
+            raise RuntimeError(f'Internal error on warning parent selection. Arguments: {args}.')

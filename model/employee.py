@@ -25,7 +25,8 @@ class Employee(Base):
         complex_id = cls.select_parent(1, complex_name)
 
         return f'SELECT * FROM Employee ' \
-            f'WHERE Employee.cpf="{cpf}" AND Employee.role={role_id} AND Employee.name="{name}" AND Employee.age={age} AND Employee.complex_id={complex_id};'
+            f'WHERE Employee.cpf="{cpf}" AND Employee.role={role_id} AND Employee.name="{name}" ' \
+            f'AND Employee.age={age} AND Employee.complex_id={complex_id};'
 
     @classmethod
     def insert_query(cls, *args):

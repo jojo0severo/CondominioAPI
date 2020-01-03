@@ -72,7 +72,7 @@ class Resident(Base):
             return f'SELECT id FROM Complex WHERE Complex.name="{complex_name}";'
 
         else:
-            raise RuntimeError(f'Internal error on apartment parent selection. Arguments: {args}.')
+            raise RuntimeError(f'Internal error on resident parent selection. Arguments: {args}.')
 
     @classmethod
     def insert_parent_query(cls, *args):
@@ -104,4 +104,4 @@ class Resident(Base):
             return f'INSERT INTO Complex (name) VALUES ("{complex_name}");'
 
         else:
-            raise RuntimeError(f'Internal error on apartment parent selection. Arguments: {args}.')
+            raise RuntimeError(f'Internal error on resident parent insertion. Arguments: {args}.')
