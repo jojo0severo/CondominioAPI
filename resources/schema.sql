@@ -6,17 +6,17 @@ CREATE TABLE Complex (
 );
 
 CREATE TABLE Tower (
-    id          INTEGER     PRIMARY KEY AUTOINCREMENT,
-    name  VARCHAR (2) NOT NULL,
-    complex_id  INTEGER     NOT NULL,
+    id         INTEGER     PRIMARY KEY AUTOINCREMENT,
+    name       VARCHAR (2) NOT NULL,
+    complex_id INTEGER     NOT NULL,
     UNIQUE (name, complex_id),
     FOREIGN KEY (complex_id) REFERENCES Complex(id) ON DELETE CASCADE
 );
 
 CREATE TABLE Apartment (
-    id         INTEGER     PRIMARY KEY AUTOINCREMENT,
-    number     INTEGER     NOT NULL,
-    tower_id   VARCHAR (2) NOT NULL,
+    id       INTEGER     PRIMARY KEY AUTOINCREMENT,
+    number   INTEGER     NOT NULL,
+    tower_id VARCHAR (2) NOT NULL,
     UNIQUE (number, tower_id),
     FOREIGN KEY (tower_id) REFERENCES Tower(id) ON DELETE CASCADE
 );
@@ -44,7 +44,7 @@ CREATE TABLE Employee (
     role       INTEGER      NOT NULL,
     complex_id INTEGER      NOT NULL,
     UNIQUE (cpf, role, complex_id),
-    FOREIGN KEY (role)       REFERENCES Role(id) ON DELETE CASCADE,
+    FOREIGN KEY (role)       REFERENCES Role(id)    ON DELETE CASCADE,
     FOREIGN KEY (complex_id) REFERENCES Complex(id) ON DELETE CASCADE
 );
 
@@ -57,17 +57,17 @@ CREATE TABLE Shop (
 );
 
 CREATE TABLE Item (
-    id            INTEGER        PRIMARY KEY AUTOINCREMENT,
-    shop_id       INTEGER        NOT NULL,
-    owner         INTEGER        NOT NULL,
-    name          VARCHAR (20)   NOT NULL,
-    price         DECIMAL (9)    NOT NULL,
+    id            INTEGER       PRIMARY KEY AUTOINCREMENT,
+    shop_id       INTEGER       NOT NULL,
+    owner         INTEGER       NOT NULL,
+    name          VARCHAR (20)  NOT NULL,
+    price         DECIMAL (9)   NOT NULL,
     description   VARCHAR (500),
     images_folder VARCHAR (150),
     UNIQUE (images_folder),
     UNIQUE (shop_id, owner, name),
     FOREIGN KEY (owner)   REFERENCES Apartment(id) ON DELETE CASCADE,
-    FOREIGN KEY (shop_id) REFERENCES Shop(id) ON DELETE CASCADE
+    FOREIGN KEY (shop_id) REFERENCES Shop(id)      ON DELETE CASCADE
 );
 
 CREATE TABLE Event (
@@ -86,7 +86,7 @@ CREATE TABLE ComplexEvent (
     event_id    INTEGER  NOT NULL,
     employee_id INTEGER  NOT NULL,
     UNIQUE (from_date, to_date, event_id),
-    FOREIGN KEY (event_id)    REFERENCES Event(id) ON DELETE CASCADE,
+    FOREIGN KEY (event_id)    REFERENCES Event(id)    ON DELETE CASCADE,
     FOREIGN KEY (employee_id) REFERENCES Employee(id) ON DELETE CASCADE
 );
 
@@ -96,31 +96,27 @@ CREATE TABLE ResidentEvent (
     to_date     DATETIME NOT NULL,
     event_id    INTEGER  NOT NULL,
     apt_id      INTEGER  NOT NULL,
-    UNIQUE(from_date, to_date, event_id),
-    FOREIGN KEY (event_id) REFERENCES Event(id) ON DELETE CASCADE,
+    UNIQUE (from_date, to_date, event_id),
+    FOREIGN KEY (event_id) REFERENCES Event(id)     ON DELETE CASCADE,
     FOREIGN KEY (apt_id)   REFERENCES Apartment(id) ON DELETE CASCADE
 );
 
-CREATE TABLE Services(
-    name    VARCHAR (50) PRIMARY KEY,
+CREATE TABLE Service (
+    id      INTEGER      PRIMARY KEY AUTOINCREMENT,
+    name    VARCHAR (50) NOT NULL,
     company VARCHAR (30) NOT NULL,
     type    VARCHAR (30) NOT NULL,
     apt_id  INTEGER      NOT NULL,
     FOREIGN KEY (apt_id) REFERENCES Apartment(id) ON DELETE CASCADE
 );
 
-CREATE TABLE Weekday(
-    week_day     INTEGER PRIMARY KEY,
-    from_hour    TIME NOT NULL,
-    to_hour      TIME
-);
-
-CREATE TABLE ServiceWeekday(
-    service_name VARCHAR (50) NOT NULL,
-    weekday_name INTEGER      NOT NULL,
-    PRIMARY KEY (service_name, weekday_name),
-    FOREIGN KEY (service_name) REFERENCES Services(name),
-    FOREIGN KEY (weekday_name) REFERENCES Weekday(week_day)
+CREATE TABLE ServiceDay (
+    id           INTEGER  PRIMARY KEY AUTOINCREMENT,
+    service_id   INTEGER  NOT NULL,
+    weekday      INTEGER  NOT NULL,
+    from_date    DATETIME NOT NULL,
+    to_date      DATETIME NOT NULL,
+    FOREIGN KEY (service_id) REFERENCES Service(id)
 );
 
 CREATE TABLE Rule (
