@@ -23,12 +23,21 @@ CREATE TABLE Apartment (
 );
 
 CREATE TABLE Resident (
-    cpf            VARCHAR (11) PRIMARY KEY,
+    id             INTEGER      PRIMARY KEY AUTOINCREMENT,
+    cpf            VARCHAR (11) NOT NULL,
     name           VARCHAR (50) NOT NULL,
     email          VARCHAR (50) NOT NULL,
     contact_number VARCHAR (13) NOT NULL,
     apt_id         INTEGER      NOT NULL,
+    UNIQUE (cpf, apt_id),
     FOREIGN KEY (apt_id) REFERENCES Apartment(id) ON DELETE CASCADE
+);
+
+CREATE TABLE ResidentUser (
+    username    VARCHAR (11) PRIMARY KEY,
+    password    VARCHAR (30) NOT NULL,
+    resident_id INTEGER      NOT NULL,
+    FOREIGN KEY (resident_id) REFERENCES Resident(id) ON DELETE CASCADE
 );
 
 CREATE TABLE Employee (
@@ -40,6 +49,14 @@ CREATE TABLE Employee (
     complex_id INTEGER      NOT NULL,
     UNIQUE (cpf, role, complex_id),
     FOREIGN KEY (complex_id) REFERENCES Complex(id) ON DELETE CASCADE
+);
+
+CREATE TABLE EmployeeUser (
+    username    VARCHAR (30) PRIMARY KEY,
+    password    VARCHAR (30) NOT NULL,
+    employee_id INTEGER      NOT NULL,
+    UNIQUE (username, employee_id),
+    FOREIGN KEY (employee_id) REFERENCES Employee(id) ON DELETE CASCADE
 );
 
 CREATE TABLE Shop (
