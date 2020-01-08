@@ -9,10 +9,6 @@ class Warning(Base):
         return f'SELECT * FROM Warning INNER JOIN Tower ON Warning.tower_id=Tower.id WHERE Tower.complex_id={complex_id};'
 
     @classmethod
-    def select_all_query(cls):
-        return 'SELECT * FROM Warning;'
-
-    @classmethod
     def select_one_query(cls, *args):
         warning_text = args[0]
         tower_name = args[1]
@@ -83,4 +79,4 @@ class Warning(Base):
             return f'INSERT INTO Complex (name) VALUES ("{complex_name}");'
 
         else:
-            raise RuntimeError(f'Internal error on warning parent selection. Arguments: {args}.')
+            raise RuntimeError(f'Internal error on warning parent insertion. Arguments: {args}.')

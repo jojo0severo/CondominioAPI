@@ -4,17 +4,30 @@ from model.database import Base
 class Service(Base):
     @classmethod
     def select_all_from_parent_query(cls, *args):
-        apt_number = args[0]
-        tower_name = args[1]
-        complex_name = args[2]
+        parent_number = args[0]
+        apt_number = args[1]
+        tower_name = args[2]
+        complex_name = args[3]
 
-        apt_id = cls.select_parent(0, apt_number, tower_name, complex_name)
+        if parent_number == 0:
+            apt_id = cls.select_parent(0, apt_number, tower_name, complex_name)
+            return f'SELECT * FROM Service WHERE Service.apt_id={apt_id};'
 
-        return f'SELECT * FROM Service WHERE Service.apt_id={apt_id};'
+        elif parent_number == 1:
+            tower_id = cls.select_parent(1, tower_name, complex_name)
+            return f'SELECT Service.id, Service.name, Service.company, Service.type FROM Service ' \
+                   f'INNER JOIN Apartment on Service.apt_id=Apartment.id ' \
+                   f'WHERE Apartment.tower_id={tower_id}'
 
-    @classmethod
-    def select_all_query(cls):
-        return 'SELECT * FROM Service;'
+        elif parent_number == 2:
+            complex_id = cls.select_parent(2, complex_name)
+            return f'SELECT Service.id, Service.name, Service.company, Service.type FROM Service ' \
+                   f'INNER JOIN Apartment ON Service.apt_id=Apartment.id ' \
+                   f'INNER JOIN Tower ON Apartment.tower_id=Tower.id ' \
+                   f'WHERE Tower.complex_id={complex_id}'
+
+        else:
+            raise ValueError('Wrong parent number given')
 
     @classmethod
     def select_one_query(cls, *args):

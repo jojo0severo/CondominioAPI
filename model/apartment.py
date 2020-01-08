@@ -12,10 +12,6 @@ class Apartment(Base):
         return f'SELECT * FROM Apartment WHERE Apartment.tower_id={tower_id};'
 
     @classmethod
-    def select_all_query(cls):
-        return 'SELECT * FROM Apartment;'
-
-    @classmethod
     def select_one_query(cls, *args):
         apt_number = args[0]
         tower_name = args[1]

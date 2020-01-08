@@ -5,16 +5,21 @@ class ComplexEvent(Base):
     @classmethod
     def select_all_from_parent_query(cls, *args):
         complex_name = args[0]
+        if len(args) > 1:
+            from_date = args[1]
+            to_date = args[2]
+            return f'SELECT Event.type, Event.title, Event.text, ComplexEvent.from_date, ComplexEvent.to_date ' \
+                   f'FROM ComplexEvent ' \
+                   f'INNER JOIN Event ON ComplexEvent.event_id = Event.id ' \
+                   f'INNER JOIN Complex ON Event.complex_id = Complex.id ' \
+                   f'WHERE Complex.name="{complex_name}" AND ' \
+                   f'ComplexEvent.from_date>="{from_date}" AND ComplexEvent <="{to_date}";'
 
         return f'SELECT Event.type, Event.title, Event.text, ComplexEvent.from_date, ComplexEvent.to_date ' \
                f'FROM ComplexEvent ' \
                f'INNER JOIN Event ON ComplexEvent.event_id = Event.id ' \
                f'INNER JOIN Complex ON Event.complex_id = Complex.id ' \
                f'WHERE Complex.name="{complex_name}";'
-
-    @classmethod
-    def select_all_query(cls):
-        return 'SELECT * FROM ComplexEvent;'
 
     @classmethod
     def select_one_query(cls, *args):

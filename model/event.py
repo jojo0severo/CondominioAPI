@@ -10,10 +10,6 @@ class Event(Base):
         return f'SELECT * FROM Event WHERE Event.complex_id={complex_id};'
 
     @classmethod
-    def select_all_query(cls):
-        return 'SELECT * FROM Event;'
-
-    @classmethod
     def select_one_query(cls, *args):
         event_type = args[0]
         event_title = args[1]

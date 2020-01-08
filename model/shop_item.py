@@ -12,10 +12,6 @@ class Item(Base):
         return f'SELECT * FROM Item WHERE Item.shop_id={shop_id};'
 
     @classmethod
-    def select_all_query(cls):
-        return 'SELECT * FROM Item;'
-
-    @classmethod
     def select_one_query(cls, *args):
         shop_type = args[0]
         owner = args[1]
@@ -76,8 +72,6 @@ class Item(Base):
             complex_name = args[2]
 
             complex_id = cls.select_parent(2, complex_name)
-            if not complex_id:
-                complex_id = cls.insert_parent(2, complex_name)
 
             return f'SELECT id FROM Tower WHERE Tower.name="{tower_name}" AND Tower.complex_id={complex_id};'
 
@@ -91,8 +85,6 @@ class Item(Base):
             complex_name = args[2]
 
             complex_id = cls.select_parent(2, complex_name)
-            if not complex_id:
-                complex_id = cls.insert_parent(2, complex_name)
 
             return f'SELECT id FROM Shop WHERE Shop.type="{shop_type}" AND Shop.complex_id={complex_id};'
 
@@ -104,11 +96,12 @@ class Item(Base):
         parent_number = args[0]
         if parent_number == 0:
             owner = args[0]
-            tower_id = args[1]
+            tower_name = args[1]
             complex_name = args[2]
 
-            if not cls.select_parent(1, tower_id, complex_name):
-                cls.insert_parent(1, tower_id, complex_name)
+            tower_id = cls.select_parent(1, tower_name, complex_name)
+            if not tower_id:
+                tower_id = cls.insert_parent(1, tower_name, complex_name)
 
             return f'INSERT INTO Apartment (number, tower_id) VALUES ({owner}, "{tower_id}");'
 
@@ -138,4 +131,4 @@ class Item(Base):
             return f'INSERT INTO Shop (type, complex_id) VALUES ("{shop_type}", {complex_id});'
 
         else:
-            raise RuntimeError(f'Internal error on shop item parent selection. Arguments: {args}.')
+            raise RuntimeError(f'Internal error on shop item parent insertion. Arguments: {args}.')

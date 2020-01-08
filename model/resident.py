@@ -3,20 +3,6 @@ from model.database import Base
 
 class Resident(Base):
     @classmethod
-    def select_all_from_parent_query(cls, *args):
-        apt_number = args[0]
-        tower_name = args[1]
-        complex_name = args[2]
-
-        apt_id = cls.select_parent(0, apt_number, tower_name, complex_name)
-
-        return f'SELECT * FROM Resident WHERE Resident.apt_id={apt_id};'
-
-    @classmethod
-    def select_all_query(cls):
-        return 'SELECT * FROM Apartment;'
-
-    @classmethod
     def select_one_query(cls, *args):
         cpf = args[0]
 

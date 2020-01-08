@@ -4,17 +4,51 @@ from model.database import Base
 class ServiceDay(Base):
     @classmethod
     def select_all_from_parent_query(cls, *args):
-        apt_number = args[0]
-        tower_name = args[1]
-        complex_name = args[2]
+        parent_number = args[0]
+        if parent_number < 3:
+            apt_number = args[1]
+            tower_name = args[2]
+            complex_name = args[3]
 
-        apt_id = cls.select_parent(1, apt_number, tower_name, complex_name)
+        else:
+            from_date = args[1]
+            to_date = args[2]
+            complex_name = args[3]
 
-        return f'SELECT * FROM ServiceDay INNER JOIN Service ON ServiceDay.service_id = Service.id WHERE Service.apt_id={apt_id};'
+        if parent_number == 0:
+            apt_id = cls.select_parent(0, apt_number, tower_name, complex_name)
+            return f'SELECT * FROM ServiceDay ' \
+                   f'INNER JOIN Service ON ServiceDay.service_id=Service.id ' \
+                   f'WHERE Service.apt_id={apt_id};'
 
-    @classmethod
-    def select_all_query(cls):
-        return 'SELECT * FROM ServiceDay;'
+        elif parent_number == 1:
+            tower_id = cls.select_parent(1, tower_name, complex_name)
+            return f'SELECT ServiceDay.weekday, ServiceDay.from_date, ServiceDay.to_date, ' \
+                   f'Service.name, Service.company, Service.type FROM ServiceDay ' \
+                   f'INNER JOIN Service ON ServiceDay.service_id=Service.id ' \
+                   f'INNER JOIN Apartment ON Service.apt_id=Apartment.id ' \
+                   f'WHERE Apartment.tower_id={tower_id};'
+
+        elif parent_number == 2:
+            complex_id = cls.select_parent(2, complex_name)
+            return f'SELECT ServiceDay.weekday, ServiceDay.from_date, ServiceDay.to_date, ' \
+                   f'Service.name, Service.company, Service.type FROM ServiceDay ' \
+                   f'INNER JOIN Service ON ServiceDay.service_id=Service.id ' \
+                   f'INNER JOIN Apartment ON Service.apt_id=Apartment.id ' \
+                   f'INNER JOIN Tower ON Apartment.tower_id=Tower.id' \
+                   f'WHERE Tower.complex_id={complex_id};'
+
+        elif parent_number == 3:
+            complex_id = cls.select_parent(2, complex_name)
+            return f'SELECT * FROM ServiceDay ' \
+                   f'INNER JOIN Service ON ServiceDay.service_id=Service.id ' \
+                   f'INNER JOIN Apartment ON Service.apt_id=Apartment.id ' \
+                   f'INNER JOIN Tower ON Apartment.tower_id=Tower.id '\
+                   f'WHERE Tower.complex_id={complex_id} AND ' \
+                   f'ServiceDay.from_date>="{from_date}" AND ServiceDay.to_date<="{to_date}";'
+
+        else:
+            raise ValueError('Wrong parent number given')
 
     @classmethod
     def select_one_query(cls, *args):
@@ -79,7 +113,7 @@ class ServiceDay(Base):
 
             apt_id = cls.select_parent(1, apt_number, tower_name, complex_name)
 
-            return f'SELECT * FROM Service ' \
+            return f'SELECT id FROM Service ' \
                    f'WHERE Service.name="{name}" AND Service.company="{company}" AND Service.type="{service_type}" AND Service.apt_id={apt_id}'
 
         elif parent_number == 1:

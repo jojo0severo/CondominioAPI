@@ -9,10 +9,6 @@ class Shop(Base):
         return f'SELECT * FROM Shop WHERE Shop.complex_id={complex_id};'
 
     @classmethod
-    def select_all_query(cls):
-        return 'SELECT * FROM Shop;'
-
-    @classmethod
     def select_one_query(cls, *args):
         shop_type = args[0]
         complex_name = args[1]

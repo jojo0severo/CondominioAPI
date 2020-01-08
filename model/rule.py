@@ -10,10 +10,6 @@ class Rule(Base):
         return f'SELECT * FROM Rule WHERE Rule.complex_id={complex_id};'
 
     @classmethod
-    def select_all_query(cls):
-        return 'SELECT * FROM Rule;'
-
-    @classmethod
     def select_one_query(cls, *args):
         rule_text = args[0]
         complex_name = args[2]

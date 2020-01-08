@@ -11,10 +11,6 @@ class Tower(Base):
         return f'SELECT * FROM Tower WHERE Tower.complex_id={complex_id};'
 
     @classmethod
-    def select_all_query(cls):
-        return 'SELECT * FROM Tower;'
-
-    @classmethod
     def select_one_query(cls, *args):
         tower_name = args[0]
         complex_name = args[1]

@@ -45,14 +45,6 @@ class Base:
             return result[0] if result else ()
 
     @classmethod
-    def select_all(cls):
-        with sqlite3.connect(db_location) as conn:
-            cursor = conn.cursor()
-            query = cls.select_all_query()
-            cursor.execute(query)
-            return cursor.fetchall()
-
-    @classmethod
     def select_all_from_parent(cls, *args):
         with sqlite3.connect(db_location) as conn:
             cursor = conn.cursor()
@@ -82,10 +74,6 @@ class Base:
 
     @classmethod
     def select_one_query(cls, *args):
-        raise NotImplementedError
-
-    @classmethod
-    def select_all_query(cls, *args):
         raise NotImplementedError
 
     @classmethod

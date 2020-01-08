@@ -10,10 +10,6 @@ class Employee(Base):
         return f'SELECT * FROM Employee WHERE Employee.complex_id={complex_id};'
 
     @classmethod
-    def select_all_query(cls):
-        return 'SELECT * FROM Employee;'
-
-    @classmethod
     def select_one_query(cls, *args):
         cpf = args[0]
         name = args[1]
