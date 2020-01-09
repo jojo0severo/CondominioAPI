@@ -4,7 +4,7 @@ from functools import wraps
 from flask import Flask, request, session
 from flask_socketio import SocketIO
 from model.database import db_location, setup_database
-from formatter import JSONFormatter
+from helpers.formatter import JSONFormatter
 
 setup_database()
 
@@ -22,7 +22,7 @@ def session_decorator(function):
     @wraps(function)
     def session_checker(*args):
         key = args[0].get_json()['key']
-        session_key = session.get('USER')
+        session_key = session.get('KEY')
 
         if not session_key:
             return {'message': 'User is not logged'}, 401
@@ -47,31 +47,35 @@ def error_decorator(function):
 
         except json.JSONDecodeError:
             status_code = 415
-            response = {'message': 'Wrong message format'}
+            response = {'result': False, 'message': 'Wrong message format'}
+
+        except PermissionError:
+            status_code = 402
+            response = {'result': False, 'message': 'User do not have the privileges to do such operation'}
 
         except ValueError:
             status_code = 400
-            response = {'message': 'Wrong information sent to request'}
+            response = {'result': False, 'message': 'Wrong information sent to request'}
 
         except NotImplementedError:
             status_code = 402
-            response = {'message': 'Endpoint can not send the information'}
+            response = {'result': False, 'message': 'Endpoint can not send the information'}
 
         except KeyError:
             status_code = 400
-            response = {'message': 'Wrong keys sent'}
+            response = {'result': False, 'message': 'Wrong keys sent'}
 
         except TypeError:
             status_code = 400
-            response = {'message': 'Wrong values type sent'}
+            response = {'result': False, 'message': 'Wrong values type sent'}
 
         except RuntimeError:
             status_code = 500
-            response = {'message': 'Something went wrong with the application'}
+            response = {'result': False, 'message': 'Something went wrong with the application'}
 
         except Exception as e:
             status_code = 500
-            response = {'message': 'Unknown error -> ' + str(e)}
+            response = {'result': False, 'message': 'Unknown error -> ' + str(e)}
 
         return response, status_code
 
@@ -88,7 +92,8 @@ def login():
 
     keys.append(key)
     response['key'] = key
-    session['USER'] = key
+    session['KEY'] = key
+    session['USER'] = data['username']
 
     return response, 201
 
@@ -99,19 +104,19 @@ def login():
 def employee():
     data = request.get_json()
     if request.method == 'GET':
-        response = formatter.get_employee(data)
+        response = formatter.get_employee(session.get('USER'), data)
         status_code = 200
 
     elif request.method == 'POST':
-        response = formatter.register_employee(data)
+        response = formatter.register_employee(session.get('USER'), data)
         status_code = 201
 
     elif request.method == 'PUT':
-        response = formatter.edit_employee(data)
+        response = formatter.edit_employee(session.get('USER'), data)
         status_code = 205
 
     else:
-        response = formatter.delete_employee(data)
+        response = formatter.delete_employee(session.get('USER'), data)
         status_code = 205
 
     return response, status_code
@@ -123,19 +128,19 @@ def employee():
 def resident():
     data = request.get_json()
     if request.method == 'GET':
-        response = formatter.get_resident(data)
+        response = formatter.get_resident(session.get('USER'), data)
         status_code = 200
 
     elif request.method == 'POST':
-        response = formatter.register_resident(data)
+        response = formatter.register_resident(session.get('USER'), data)
         status_code = 201
 
     elif request.method == 'PUT':
-        response = formatter.edit_resident(data)
+        response = formatter.edit_resident(session.get('USER'), data)
         status_code = 205
 
     else:
-        response = formatter.delete_resident(data)
+        response = formatter.delete_resident(session.get('USER'), data)
         status_code = 205
 
     return response, status_code
@@ -424,9 +429,9 @@ def shop():
 @app.route('/<shop>/item/all', methods=['GET'])
 @error_decorator
 @session_decorator(request)
-def all_items(shop):
+def all_items(shop_name):
     data = request.get_json()
-    response = formatter.get_all_item(shop, data)
+    response = formatter.get_all_item(shop_name, data)
 
     return response, 200
 
@@ -434,23 +439,23 @@ def all_items(shop):
 @app.route('/<shop>/item', methods=['GET', 'POST', 'PUT', 'DELETE'])
 @error_decorator
 @session_decorator(request)
-def item(shop):
+def item(shop_name):
     data = request.get_json()
 
     if request.method == 'GET':
-        response = formatter.get_item(data)
+        response = formatter.get_item(shop_name, data)
         status_code = 200
 
     elif request.method == 'POST':
-        response = formatter.register_item(data)
+        response = formatter.register_item(shop_name, data)
         status_code = 201
 
     elif request.method == 'PUT':
-        response = formatter.edit_item(data)
+        response = formatter.edit_item(shop_name, data)
         status_code = 205
 
     else:
-        response = formatter.delete_item(data)
+        response = formatter.delete_item(shop_name, data)
         status_code = 205
 
     return response, status_code
