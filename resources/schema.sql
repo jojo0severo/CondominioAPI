@@ -44,7 +44,7 @@ CREATE TABLE ResidentUser (
   username    VARCHAR (25) PRIMARY KEY,
   password    VARCHAR (25) NOT NULL,
   resident_id INTEGER      REFERENCES Resident(id),
-  UNIQUE(username, password)
+  UNIQUE(resident_id)
 );
 
 CREATE TABLE Employee (
@@ -63,10 +63,10 @@ CREATE TABLE EmployeeUser (
   username    VARCHAR (25) PRIMARY KEY,
   password    VARCHAR (25) NOT NULL,
   employee_id INTEGER      REFERENCES Employee(id),
-  UNIQUE(username, password)
+  UNIQUE(employee_id)
 );
 
-CREATE TABLE Rules (
+CREATE TABLE Rule (
   id             INTEGER       PRIMARY KEY,
   text           VARCHAR (500) NOT NULL,
   condominium_id INTEGER       REFERENCES Condominium(id)

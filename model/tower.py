@@ -1,52 +1,16 @@
-from model.database import Base
+from setup import db
 
 
-class Tower(Base):
-    @classmethod
-    def select_all_from_parent_query(cls, *args):
-        complex_name = args[0]
+class Tower(db.Model):
+    __tablename__ = 'tower'
+    __table_args__ = (db.UniqueConstraint('tower_name', 'condominium_id'),)
 
-        complex_id = cls.select_parent(complex_name)
+    id = db.Column(db.Integer, primary_key=True)
+    tower_name = db.Column(db.String(10), nullable=False)
+    condominium_id = db.Column(db.Integer, db.ForeignKey('condominium.id'), nullable=False)
 
-        return f'SELECT * FROM Tower WHERE Tower.complex_id={complex_id};'
+    apartments = db.relationship('Apartment', backref='tower', lazy=True)
 
-    @classmethod
-    def select_one_query(cls, *args):
-        tower_name = args[0]
-        complex_name = args[1]
-
-        complex_id = cls.select_parent(complex_name)
-
-        return f'SELECT * FROM Tower WHERE Tower.name="{tower_name}" AND Tower.complex_id={complex_id};'
-
-    @classmethod
-    def insert_query(cls, *args):
-        tower_name = args[0]
-        complex_name = args[1]
-
-        complex_id = cls.select_parent(complex_name)
-        if not complex_id:
-            complex_id = cls.insert_parent(complex_name)
-
-        return f'INSERT INTO Tower (name, complex_id) VALUES ("{tower_name}", {complex_id});'
-
-    @classmethod
-    def delete_query(cls, *args):
-        tower_name = args[0]
-        complex_name = args[1]
-
-        complex_id = cls.select_parent(complex_name)
-
-        return f'DELETE FROM Tower WHERE Tower.name="{tower_name}" AND Tower.complex_id={complex_id};'
-
-    @classmethod
-    def select_parent_query(cls, *args):
-        complex_name = args[0]
-
-        return f'SELECT id FROM Complex WHERE Complex.name="{complex_name}";'
-
-    @classmethod
-    def insert_parent_query(cls, *args):
-        complex_name = args[0]
-        return f'INSERT INTO Complex (name) VALUES ("{complex_name}");'
-
+    def __repr__(self):
+        return f'Tower(id={self.id}, ' \
+               f'tower_name={self.tower_name})'

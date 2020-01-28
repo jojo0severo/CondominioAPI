@@ -3,25 +3,25 @@ import secrets
 from functools import wraps
 from flask import Flask, request, session
 from flask_socketio import SocketIO
-from model.database import db_location, setup_database
-from helpers.formatter import JSONFormatter
-
-setup_database()
+from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
 app.config['JSON_SORT_KEYS'] = False
 app.config['SECRET_KEY'] = secrets.token_urlsafe(10)
-app.config['SQLALCHEMY_DATABASE_URI'] = db_location
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///data/api.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db = SQLAlchemy(app)
 
 socket = SocketIO(app)
-formatter = JSONFormatter()
+formatter = None
 keys = []
 
 
 def session_decorator(function):
     @wraps(function)
     def session_checker(*args):
-        key = args[0].get_json()['key']
+        key = request.get_json()['key']
         session_key = session.get('KEY')
 
         if not session_key:
@@ -100,7 +100,7 @@ def login():
 
 @app.route('/employee', methods=['GET', 'POST', 'PUT', 'DELETE'])
 @error_decorator
-@session_decorator(request)
+@session_decorator
 def employee():
     data = request.get_json()
     if request.method == 'GET':
@@ -124,7 +124,7 @@ def employee():
 
 @app.route('/resident', methods=['GET', 'POST', 'PUT', 'DELETE'])
 @error_decorator
-@session_decorator(request)
+@session_decorator
 def resident():
     data = request.get_json()
     if request.method == 'GET':
@@ -148,7 +148,7 @@ def resident():
 
 @app.route('/apartment/all', methods=['GET'])
 @error_decorator
-@session_decorator(request)
+@session_decorator
 def all_apartments():
     data = request.get_json()
     response = formatter.get_all_apartment(data)
@@ -158,7 +158,7 @@ def all_apartments():
 
 @app.route('/apartment', methods=['GET', 'POST', 'PUT', 'DELETE'])
 @error_decorator
-@session_decorator(request)
+@session_decorator
 def apartment():
     data = request.get_json()
 
@@ -183,7 +183,7 @@ def apartment():
 
 @app.route('/tower/all', methods=['GET'])
 @error_decorator
-@session_decorator(request)
+@session_decorator
 def all_towers():
     data = request.get_json()
     response = formatter.get_all_tower(data)
@@ -193,7 +193,7 @@ def all_towers():
 
 @app.route('/tower', methods=['GET', 'POST', 'PUT', 'DELETE'])
 @error_decorator
-@session_decorator(request)
+@session_decorator
 def tower():
     data = request.get_json()
 
@@ -212,13 +212,13 @@ def tower():
     else:
         response = formatter.remove_tower(data)
         status_code = 205
-        
+
     return response, status_code
 
 
 @app.route('/event/all', methods=['GET'])
 @error_decorator
-@session_decorator(request)
+@session_decorator
 def all_events():
     data = request.get_json()
     response = formatter.get_all_event(data)
@@ -228,7 +228,7 @@ def all_events():
 
 @app.route('/event', methods=['GET', 'POST', 'PUT', 'DELETE'])
 @error_decorator
-@session_decorator(request)
+@session_decorator
 def event():
     data = request.get_json()
 
@@ -253,7 +253,7 @@ def event():
 
 @app.route('/complex_event/all', methods=['GET'])
 @error_decorator
-@session_decorator(request)
+@session_decorator
 def all_complex_events():
     data = request.get_json()
     response = formatter.get_all_complex_event(data)
@@ -263,7 +263,7 @@ def all_complex_events():
 
 @app.route('/complex_event', methods=['GET', 'POST', 'PUT', 'DELETE'])
 @error_decorator
-@session_decorator(request)
+@session_decorator
 def complex_event():
     data = request.get_json()
 
@@ -288,7 +288,7 @@ def complex_event():
 
 @app.route('/resident_event/all', methods=['GET'])
 @error_decorator
-@session_decorator(request)
+@session_decorator
 def all_resident_events():
     data = request.get_json()
     response = formatter.get_all_resident_event(data)
@@ -298,7 +298,7 @@ def all_resident_events():
 
 @app.route('/resident_event', methods=['GET', 'POST', 'PUT', 'DELETE'])
 @error_decorator
-@session_decorator(request)
+@session_decorator
 def resident_event():
     data = request.get_json()
 
@@ -323,7 +323,7 @@ def resident_event():
 
 @app.route('/warning/all', methods=['GET'])
 @error_decorator
-@session_decorator(request)
+@session_decorator
 def all_warnings():
     data = request.get_json()
     response = formatter.get_all_warning(data)
@@ -333,7 +333,7 @@ def all_warnings():
 
 @app.route('/warning', methods=['GET', 'POST', 'PUT', 'DELETE'])
 @error_decorator
-@session_decorator(request)
+@session_decorator
 def warning():
     data = request.get_json()
 
@@ -358,7 +358,7 @@ def warning():
 
 @app.route('/rule/all', methods=['GET'])
 @error_decorator
-@session_decorator(request)
+@session_decorator
 def all_rules():
     data = request.get_json()
     response = formatter.get_all_rule(data)
@@ -368,7 +368,7 @@ def all_rules():
 
 @app.route('/rule', methods=['GET', 'POST', 'PUT', 'DELETE'])
 @error_decorator
-@session_decorator(request)
+@session_decorator
 def rule():
     data = request.get_json()
 
@@ -393,7 +393,7 @@ def rule():
 
 @app.route('/shop/all', methods=['GET'])
 @error_decorator
-@session_decorator(request)
+@session_decorator
 def all_shops():
     data = request.get_json()
     response = formatter.get_all_shop(data)
@@ -403,7 +403,7 @@ def all_shops():
 
 @app.route('/shop', methods=['GET', 'POST', 'PUT', 'DELETE'])
 @error_decorator
-@session_decorator(request)
+@session_decorator
 def shop():
     data = request.get_json()
 
@@ -428,7 +428,7 @@ def shop():
 
 @app.route('/<shop>/item/all', methods=['GET'])
 @error_decorator
-@session_decorator(request)
+@session_decorator
 def all_items(shop_name):
     data = request.get_json()
     response = formatter.get_all_item(shop_name, data)
@@ -438,7 +438,7 @@ def all_items(shop_name):
 
 @app.route('/<shop>/item', methods=['GET', 'POST', 'PUT', 'DELETE'])
 @error_decorator
-@session_decorator(request)
+@session_decorator
 def item(shop_name):
     data = request.get_json()
 
@@ -463,7 +463,7 @@ def item(shop_name):
 
 @app.route('/service/all', methods=['GET'])
 @error_decorator
-@session_decorator(request)
+@session_decorator
 def all_services():
     data = request.get_json()
     response = formatter.get_all_service(data)
@@ -473,7 +473,7 @@ def all_services():
 
 @app.route('/service', methods=['GET', 'POST', 'PUT', 'DELETE'])
 @error_decorator
-@session_decorator(request)
+@session_decorator
 def service():
     data = request.get_json()
 
@@ -498,7 +498,7 @@ def service():
 
 @app.route('/service_day/all', methods=['GET'])
 @error_decorator
-@session_decorator(request)
+@session_decorator
 def all_service_days():
     data = request.get_json()
     response = formatter.get_all_service_day(data)
@@ -508,7 +508,7 @@ def all_service_days():
 
 @app.route('/service_day', methods=['GET', 'POST', 'PUT', 'DELETE'])
 @error_decorator
-@session_decorator(request)
+@session_decorator
 def service_day():
     data = request.get_json()
 
