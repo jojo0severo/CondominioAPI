@@ -1,20 +1,19 @@
 import json
 import secrets
 from functools import wraps
-from flask import Flask, request, session
+from flask import Flask, request, session, jsonify
 from flask_socketio import SocketIO
 from flask_sqlalchemy import SQLAlchemy
+
 
 app = Flask(__name__)
 app.config['JSON_SORT_KEYS'] = False
 app.config['SECRET_KEY'] = secrets.token_urlsafe(10)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///data/api.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///data/api.db'
 
 db = SQLAlchemy(app)
-
 socket = SocketIO(app)
-formatter = None
 keys = []
 
 
@@ -80,6 +79,12 @@ def error_decorator(function):
         return response, status_code
 
     return error_handler
+
+
+@app.route('/test', methods=['GET', 'POST', 'UPDATE', 'DELETE'])
+def test():
+    data = request.get_json()
+    return jsonify(formatter.register_country(data['country_name'])), 200
 
 
 @app.route('/login', methods=['POST'])
@@ -532,4 +537,10 @@ def service_day():
 
 
 if __name__ == '__main__':
+    from controller.formatter import JSONFormatter
+
+    formatter = JSONFormatter()
+
+    import database_cleaner
+
     socket.run(app)

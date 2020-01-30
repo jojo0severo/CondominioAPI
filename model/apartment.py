@@ -7,9 +7,9 @@ class Apartment(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     apt_number = db.Column(db.Integer, nullable=False)
-    tower_id = db.Column(db.Integer, db.ForeignKey('tower'), nullable=False)
+    tower_id = db.Column(db.Integer, db.ForeignKey('tower.id'), nullable=False)
 
-    residents = db.relationship('Resident', backref='apartment', lazy=True)
+    tower = db.relationship('Tower', backref='apartments', lazy=True)
 
     def __repr__(self):
         return f'Apartment(id={self.id},' \
