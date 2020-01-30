@@ -19,6 +19,7 @@ from model.city import City
 from model.state import State
 from model.country import Country
 
+db.create_all()
 
 db.session.query(Notification).delete()
 db.session.query(Rule).delete()
