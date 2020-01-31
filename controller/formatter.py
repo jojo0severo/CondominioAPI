@@ -1,4 +1,3 @@
-import json
 from controller.super_user_controller import SuperUserController
 from controller.address_controller import AddressController
 from controller.condominium_controller import CondominiumController
@@ -11,17 +10,12 @@ from controller.rule_controller import RuleController
 from controller.guest_controller import GuestController
 from controller.service_controller import ServiceController
 from controller.event_controller import EventController
+import json
 
 
 class JSONFormatter:
-    def get_super_country(self, country_id):
-        result = SuperUserController.get_country(country_id)
-        return result
+    def __init__(self):
+        self.super_user = SuperUserController()
 
-    def get_super_countries(self):
-        result = SuperUserController.get_countries()
-        return result
-
-    def get_super_state(self):
-        pass
-
+    def clear(self, session):
+        self.super_user.clear(session)

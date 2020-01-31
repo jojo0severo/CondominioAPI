@@ -1,4 +1,3 @@
-from setup import db
 from model.country import Country
 from model.state import State
 from model.city import City
@@ -15,203 +14,575 @@ from model.guest import Guest
 from model.service import Service
 from model.rule import Rule
 from model.super_user import SuperUser
+from setup import db
+from sqlalchemy import exc
 
 
 class SuperUserController:
-    @staticmethod
-    def get_super_users():
+    def __init__(self):
+        self.sessions = set()
+
+    def add_session(self, session):
+        self.sessions.add(session)
+
+    def get_super_users(self, session):
+        if session not in self.sessions:
+            raise PermissionError
+
         return SuperUser.query.all()
 
-    @staticmethod
-    def get_super_user(username):
-        return SuperUser.query.get(username)
+    def get_super_user(self, session, username, password):
+        if session != 'login' and session not in self.sessions:
+            raise PermissionError
 
-    @staticmethod
-    def register_super_user(username, password):
-        db.session.add(SuperUser(username=username, password=password))
-        db.session.commit()
-        return True
+        user = SuperUser.query.get(username)
+        return user is not None and user.password == password
 
-    @staticmethod
-    def delete_super_user(username):
+    def register_super_user(self, session, username, password):
+        if session not in self.sessions:
+            return False
+
+        try:
+            db.session.add(SuperUser(username=username, password=password))
+            db.session.commit()
+            return True
+
+        except exc.IntegrityError:
+            db.session.rollback()
+            return False
+
+    def delete_super_user(self, session, username):
+        if session not in self.sessions:
+            raise PermissionError
+
         deleted = SuperUser.query.filter_by(username=username).delete()
         if deleted:
             db.session.commit()
             return True
         return False
 
-    @staticmethod
-    def get_countries():
+    def get_countries(self, session):
+        if session not in self.sessions:
+            raise PermissionError
+
         return Country.query.all()
 
-    @staticmethod
-    def get_country(country_id):
+    def get_country(self, session, country_id):
+        if session not in self.sessions:
+            raise PermissionError
+
         return Country.query.get(country_id)
 
-    @staticmethod
-    def register_country(country_name):
-        db.session.add(Country(name=country_name))
-        db.session.commit()
-        return True
+    def register_country(self, session, country_name):
+        if session not in self.sessions:
+            raise PermissionError
 
-    @staticmethod
-    def remove_country(country_id):
+        try:
+            db.session.add(Country(name=country_name))
+            db.session.commit()
+            return True
+
+        except exc.IntegrityError:
+            return False
+
+    def remove_country(self, session, country_id):
+        if session not in self.sessions:
+            raise PermissionError
+
         deleted = Country.query.filter_by(id=country_id).delete()
         if deleted:
             db.session.commit()
             return True
         return False
 
-    @staticmethod
-    def get_states():
+    def get_states(self, session):
+        if session not in self.sessions:
+            raise PermissionError
+
         return State.query.all()
 
-    @staticmethod
-    def get_state(state_id):
+    def get_state(self, session, state_id):
+        if session not in self.sessions:
+            raise PermissionError
+
         return State.query.filter(State.id == state_id).join(Country)
 
-    @staticmethod
-    def register_state(state_name, country_id):
-        db.session.add(State(name=state_name, country_id=country_id))
-        db.session.commit()
-        return True
+    def register_state(self, session, state_name, country_id):
+        if session not in self.sessions:
+            raise PermissionError
 
-    @staticmethod
-    def remove_state(state_id):
+        try:
+            db.session.add(State(name=state_name, country_id=country_id))
+            db.session.commit()
+            return True
+
+        except exc.IntegrityError:
+            db.session.rollback()
+            return False
+
+    def remove_state(self, session, state_id):
+        if session not in self.sessions:
+            raise PermissionError
+
         deleted = State.query.filter_by(id=state_id).delete()
         if deleted:
             db.session.commit()
             return True
         return False
 
-    @staticmethod
-    def get_cities():
+    def get_cities(self, session):
+        if session not in self.sessions:
+            raise PermissionError
+
         return City.query.all()
 
-    @staticmethod
-    def get_city(city_id):
+    def get_city(self, session, city_id):
+        if session not in self.sessions:
+            raise PermissionError
+
         return City.query.filter(City.id == city_id).join(State).join(Country)
 
-    @staticmethod
-    def register_city(city_name, state_id):
-        db.session.add(City(name=city_name, state_id=state_id))
-        db.session.commit()
-        return True
+    def register_city(self, session, city_name, state_id):
+        if session not in self.sessions:
+            raise PermissionError
 
-    @staticmethod
-    def remove_city(city_id):
+        try:
+            db.session.add(City(name=city_name, state_id=state_id))
+            db.session.commit()
+            return True
+
+        except exc.IntegrityError:
+            db.session.rollback()
+            return False
+
+    def remove_city(self, session, city_id):
+        if session not in self.sessions:
+            raise PermissionError
+
         deleted = City.query.filter_by(id=city_id).delete()
         if deleted:
             db.session.commit()
             return True
         return False
 
-    @staticmethod
-    def get_addresses():
+    def get_addresses(self, session):
+        if session not in self.sessions:
+            raise PermissionError
+
         return Address.query.all()
 
-    @staticmethod
-    def get_address(address_id):
+    def get_address(self, session, address_id):
+        if session not in self.sessions:
+            raise PermissionError
+
         return Address.query.filter(Address.id == address_id).join(City).join(State).join(Country)
 
-    @staticmethod
-    def register_address(street_name, neighbourhood, city_id):
-        db.session.add(Address(street_name=street_name, neighbourhood=neighbourhood, city_id=city_id))
-        db.session.commit()
-        return True
+    def register_address(self, session, street_name, neighbourhood, city_id):
+        if session not in self.sessions:
+            raise PermissionError
 
-    @staticmethod
-    def remove_address(address_id):
+        try:
+            db.session.add(Address(street_name=street_name, neighbourhood=neighbourhood, city_id=city_id))
+            db.session.commit()
+            return True
+
+        except exc.IntegrityError:
+            return False
+
+    def remove_address(self, session, address_id):
+        if session not in self.sessions:
+            raise PermissionError
+
         deleted = Address.query.filter_by(id=address_id).delete()
         if deleted:
             db.session.commit()
             return True
         return False
 
-    @staticmethod
-    def get_condominiums():
+    def get_condominiums(self, session):
+        if session not in self.sessions:
+            raise PermissionError
+
         return Condominium.query.all()
 
-    @staticmethod
-    def get_condominium(condominium_id):
+    def get_condominium(self, session, condominium_id):
+        if session not in self.sessions:
+            raise PermissionError
+
         return Condominium.query.filter(Condominium.id == condominium_id).join(Address).join(City).join(State).join(Country)
 
-    @staticmethod
-    def get_towers():
+    def register_condominium(self, session, name, street_number, address_id):
+        if session not in self.sessions:
+            raise PermissionError
+
+        try:
+            db.session.add(Condominium(name=name, street_number=street_number, address_id=address_id))
+            db.session.commit()
+            return True
+
+        except exc.IntegrityError:
+            db.session.rollback()
+            return False
+
+    def remove_condominium(self, session, condominium_id):
+        if session not in self.sessions:
+            raise PermissionError
+
+        deleted = Condominium.query.filter_by(id=condominium_id).delete()
+        if deleted:
+            db.session.commit()
+            return True
+        return False
+
+    def get_towers(self, session):
+        if session not in self.sessions:
+            raise PermissionError
+
         return Tower.query.all()
 
-    @staticmethod
-    def get_tower(tower_id):
+    def get_tower(self, session, tower_id):
+        if session not in self.sessions:
+            raise PermissionError
+
         return Tower.query.filter(Tower.id == tower_id).join(Condominium).join(Address)
 
-    @staticmethod
-    def get_apartment(apartment_id):
-        return Apartment.query.filter(Apartment.id == apartment_id).join(Tower).join(Condominium).join(Address)
+    def register_tower(self, session, name, condominium_id):
+        if session not in self.sessions:
+            raise PermissionError
 
-    @staticmethod
-    def get_apartments():
+        try:
+            db.session.add(Tower(name=name, condominium_id=condominium_id))
+            db.session.commit()
+            return True
+
+        except exc.IntegrityError:
+            db.session.rollback()
+            return False
+
+    def remove_tower(self, session, tower_id):
+        if session not in self.sessions:
+            raise PermissionError
+
+        deleted = Tower.query.filter_by(id=tower_id).delete()
+        if deleted:
+            db.session.commit()
+            return True
+        return False
+
+    def get_apartments(self, session):
+        if session not in self.sessions:
+            raise PermissionError
+
         return Apartment.query.all()
 
-    @staticmethod
-    def get_resident(resident_id):
-        return Resident.query.filter(Resident.id == resident_id).join(Apartment).join(Tower).join(Condominium).join(Address)
+    def get_apartment(self, session, apartment_id):
+        if session not in self.sessions:
+            raise PermissionError
 
-    @staticmethod
-    def get_residents():
+        return Apartment.query.filter(Apartment.id == apartment_id).join(Tower).join(Condominium).join(Address)
+
+    def register_apartment(self, session, apt_number, tower_id):
+        if session not in self.sessions:
+            raise PermissionError
+
+        try:
+            db.session.add(Apartment(apt_number=apt_number, tower_id=tower_id))
+            db.session.commit()
+            return True
+
+        except exc.IntegrityError:
+            db.session.rollback()
+            return False
+
+    def remove_apartment(self, session, apartment_id):
+        if session not in self.sessions:
+            raise PermissionError
+
+        deleted = Apartment.query.filter_by(id=apartment_id).delete()
+        if deleted:
+            db.session.commit()
+            return True
+        return False
+
+    def get_residents(self, session):
+        if session not in self.sessions:
+            raise PermissionError
+
         return Resident.query.all()
 
-    @staticmethod
-    def get_resident_user(resident_user_username):
-        return ResidentUser.query.filter(ResidentUser.username == resident_user_username).join(Resident)
+    def get_resident(self, session, resident_id):
+        if session not in self.sessions:
+            raise PermissionError
 
-    @staticmethod
-    def get_resident_users():
+        return Resident.query.filter(Resident.id == resident_id).join(Apartment).join(Tower).join(Condominium).join(Address)
+
+    def register_resident(self, session, cpf, name, birthday, photo_location, apartment_id):
+        if session not in self.sessions:
+            raise PermissionError
+
+        try:
+            db.session.add(Resident(cpf=cpf, name=name, birthday=birthday, photo_location=photo_location, apartment_id=apartment_id))
+            db.session.commit()
+            return True
+
+        except exc.IntegrityError:
+            db.session.rollback()
+            return False
+
+    def remove_resident(self, session, resident_id):
+        if session not in self.sessions:
+            raise PermissionError
+
+        deleted = Resident.query.filter_by(id=resident_id).delete()
+        if deleted:
+            db.session.commit()
+            return True
+        return False
+
+    def get_resident_users(self, session):
+        if session not in self.sessions:
+            raise PermissionError
+
         return ResidentUser.query.all()
 
-    @staticmethod
-    def get_employee(employee_id):
-        return Employee.query.filter(Employee.id == employee_id).join(Condominium).join(Address)
+    def get_resident_user(self, session, username):
+        if session not in self.sessions:
+            raise PermissionError
 
-    @staticmethod
-    def get_employees():
+        return ResidentUser.query.filter(ResidentUser.username == username).join(Resident)
+
+    def register_resident_user(self, session, username, password, resident_id):
+        if session not in self.sessions:
+            raise PermissionError
+
+        try:
+            db.session.add(ResidentUser(username=username, password=password, resident_id=resident_id))
+            db.session.commit()
+            return True
+
+        except exc.IntegrityError:
+            db.session.rollback()
+            return False
+
+    def remove_resident_user(self, session, username):
+        if session not in self.sessions:
+            raise PermissionError
+
+        deleted = ResidentUser.query.filter_by(username=username).delete()
+        if deleted:
+            db.session.commit()
+            return True
+        return False
+
+    def get_employees(self, session):
+        if session not in self.sessions:
+            raise PermissionError
+
         return Employee.query.all()
 
-    @staticmethod
-    def get_employee_user(employee_user_username):
-        return EmployeeUser.query.filter(EmployeeUser.username == employee_user_username).join(Employee)
+    def get_employee(self, session, employee_id):
+        if session not in self.sessions:
+            raise PermissionError
 
-    @staticmethod
-    def get_employee_users():
+        return Employee.query.filter(Employee.id == employee_id).join(Condominium).join(Address)
+
+    def register_employee(self, session, cpf, name, birthday, photo_location, role, condominium_id):
+        if session not in self.sessions:
+            raise PermissionError
+
+        try:
+            db.session.add(Employee(cpf=cpf, name=name, birthday=birthday, photo_location=photo_location, role=role, condominium_id=condominium_id))
+            db.session.commit()
+            return True
+
+        except exc.IntegrityError:
+            db.session.rollback()
+            return False
+
+    def remove_employee(self, session, employee_id):
+        if session not in self.sessions:
+            raise PermissionError
+
+        deleted = Employee.query.filter_by(id=employee_id).delete()
+        if deleted:
+            db.session.commit()
+            return True
+        return False
+
+    def get_employee_users(self, session):
+        if session not in self.sessions:
+            raise PermissionError
+
         return EmployeeUser.query.all()
 
-    @staticmethod
-    def get_notification(notification_id):
-        return Notification.query.filter(Notification.id == notification_id).join(Condominium).join(Address)
+    def get_employee_user(self, session, username):
+        if session not in self.sessions:
+            raise PermissionError
 
-    @staticmethod
-    def get_notifications():
+        return EmployeeUser.query.filter(EmployeeUser.username == username).join(Employee)
+
+    def register_employee_user(self, session, username, password, employee_id):
+        if session not in self.sessions:
+            raise PermissionError
+
+        try:
+            db.session.add(EmployeeUser(username=username, password=password, employee_id=employee_id))
+            db.session.commit()
+            return True
+
+        except exc.IntegrityError:
+            db.session.rollback()
+            return False
+
+    def remove_employee_user(self, session, username):
+        if session not in self.sessions:
+            raise PermissionError
+
+        deleted = EmployeeUser.query.filter_by(username=username).delete()
+        if deleted:
+            db.session.commit()
+            return True
+        return False
+
+    def get_notifications(self, session):
+        if session not in self.sessions:
+            raise PermissionError
+
         return Notification.query.all()
 
-    @staticmethod
-    def get_guest(guest_id):
-        return Guest.query.filter(Guest.id == guest_id).join(Condominium).join(Address)
+    def get_notification(self, session, notification_id):
+        if session not in self.sessions:
+            raise PermissionError
 
-    @staticmethod
-    def get_guests():
+        return Notification.query.filter(Notification.id == notification_id).join(Condominium).join(Address)
+
+    def register_notification(self, session, notification_id):
+        if session not in self.sessions:
+            raise PermissionError
+
+        deleted = Notification.query.filter_by(id=notification_id).delete()
+        if deleted:
+            db.session.commit()
+            return True
+        return False
+
+    def remove_notification(self, session, noti_type, title, text, finish_date, condominium_id):
+        if session not in self.sessions:
+            raise PermissionError
+
+        try:
+            db.session.add(Notification(type=noti_type, title=title, text=text, finish_date=finish_date, condominium_id=condominium_id))
+            db.session.commit()
+            return True
+
+        except exc.IntegrityError:
+            db.session.rollback()
+            return False
+
+    def get_guests(self, session):
+        if session not in self.sessions:
+            raise PermissionError
+
         return Guest.query.all()
 
-    @staticmethod
-    def get_service(service_id):
-        return Service.query.filter(Service.id == service_id).join(Condominium).join(Address)
+    def get_guest(self, session, guest_id):
+        if session not in self.sessions:
+            raise PermissionError
 
-    @staticmethod
-    def get_services():
+        return Guest.query.filter(Guest.id == guest_id).join(Condominium).join(Address)
+
+    def register_guest(self, session, name, arrival, apartment_id):
+        if session not in self.sessions:
+            raise PermissionError
+
+        try:
+            db.session.add(Guest(name=name, arrival=arrival, apartment_id=apartment_id))
+            db.session.commit()
+            return True
+
+        except exc.IntegrityError:
+            db.session.rollback()
+            return False
+
+    def remove_guest(self, session, guest_id):
+        if session not in self.sessions:
+            raise PermissionError
+
+        deleted = Guest.query.filter_by(id=guest_id).delete()
+        if deleted:
+            db.session.commit()
+            return True
+        return False
+
+    def get_services(self, session):
+        if session not in self.sessions:
+            raise PermissionError
+
         return Service.query.all()
 
-    @staticmethod
-    def get_rule(rule_id):
+    def get_service(self, session, service_id):
+        if session not in self.sessions:
+            raise PermissionError
+
+        return Service.query.filter(Service.id == service_id).join(Condominium).join(Address)
+
+    def register_service(self, session, name, employee, arrival, apartment_id):
+        if session not in self.sessions:
+            raise PermissionError
+
+        try:
+            db.session.add(Service(name=name, employee=employee, arrival=arrival, apartment_id=apartment_id))
+            db.session.commit()
+            return True
+
+        except exc.IntegrityError:
+            db.session.rollback()
+            return False
+
+    def remove_service(self, session, service_id):
+        if session not in self.sessions:
+            raise PermissionError
+
+        deleted = Service.query.filter_by(id=service_id).delete()
+        if deleted:
+            db.session.commit()
+            return True
+        return False
+
+    def get_rules(self, session):
+        if session not in self.sessions:
+            raise PermissionError
+
+        return Rule.query.all()
+
+    def get_rule(self, session, rule_id):
+        if session not in self.sessions:
+            raise PermissionError
+
         return Rule.query.filter(Rule.id == rule_id).join(Condominium).join(Address)
 
-    @staticmethod
-    def get_rules():
-        return Rule.query.all()
+    def register_rule(self, session, text, condominium_id):
+        if session not in self.sessions:
+            raise PermissionError
+
+        try:
+            db.session.add(Rule(text=text, condominium_id=condominium_id))
+            db.session.commit()
+            return True
+
+        except exc.IntegrityError:
+            db.session.rollback()
+            return False
+
+    def remove_rule(self, session, rule_id):
+        if session not in self.sessions:
+            raise PermissionError
+
+        deleted = Rule.query.filter_by(id=rule_id).delete()
+        if deleted:
+            db.session.commit()
+            return True
+        return False
+
+    def clear(self, session):
+        self.sessions.remove(session)
