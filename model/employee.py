@@ -9,7 +9,7 @@ class Employee(db.Model):
     cpf = db.Column(db.String(11), nullable=False)
     name = db.Column(db.String(50), nullable=False)
     birthday = db.Column(db.Date, nullable=False)
-    photo_location = db.Column(db.String(200), nullable=False)
+    photo_location = db.Column(db.String(200), nullable=True, default='data/photos/default/employee.png')
     role = db.Column(db.String(50), nullable=False)
     condominium_id = db.Column(db.Integer, db.ForeignKey('condominium.id'), nullable=False)
 

@@ -9,5 +9,4 @@ class Country(db.Model):
     name = db.Column(db.String(40), nullable=False)
 
     def __repr__(self):
-        return f'Country(id={self.id}, ' \
-               f'country_name={self.name})'
+        return f'Country(id={self.id}, name={self.name})'

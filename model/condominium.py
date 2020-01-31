@@ -8,6 +8,7 @@ class Condominium(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(60), nullable=False)
     street_number = db.Column(db.Integer, nullable=False)
+    photo_location = db.Column(db.String(200), nullable=True, default='data/photos/default/condominium.png')
     address_id = db.Column(db.Integer, db.ForeignKey('address.id'), nullable=False)
 
     address = db.relationship('Address', backref='condominiums', lazy=True)

@@ -12,5 +12,4 @@ class State(db.Model):
     country = db.relationship('Country', backref='states', lazy=True)
 
     def __repr__(self):
-        return f'State(id={self.id}, ' \
-               f'state_name={self.name})'
+        return f'State(id={self.id}, name={self.name})'
