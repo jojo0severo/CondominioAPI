@@ -1,5 +1,6 @@
 import json
 import secrets
+import datetime
 from functools import wraps
 from flask import Flask, request, session, jsonify
 from flask_socketio import SocketIO
@@ -17,6 +18,20 @@ socket = SocketIO(app)
 keys = []
 
 
+def timer_decorator(function):
+    @wraps(function)
+    def timer_checker(*args):
+        datetime_diff = session['datetime'] - datetime.datetime.now()
+        if datetime_diff.days >= 3:
+            formatter.clear(session['KEY'])
+            del session['KEY']
+            del session['datetime']
+
+        return function(*args)
+
+    return timer_checker
+
+
 def session_decorator(function):
     @wraps(function)
     def session_checker(*args):
@@ -24,7 +39,7 @@ def session_decorator(function):
         session_key = session.get('KEY')
 
         if not session_key:
-            return {'message': 'User is not logged'}, 401
+            return {'message': 'User is not logged or session expired'}, 401
 
         elif key not in keys:
             return {'message': 'Key not recognized'}, 401
@@ -81,24 +96,41 @@ def error_decorator(function):
     return error_handler
 
 
-@app.route('/test', methods=['GET', 'POST', 'UPDATE', 'DELETE'])
-def test():
-    data = request.get_json()
-    return jsonify(formatter.register_country(data['country_name'])), 200
+@app.before_request
+def session_configuration():
+    session.permanent = True
+    session.modified = True
+    app.permanent_session_lifetime = datetime.timedelta(days=365)
 
 
-@app.route('/login', methods=['POST'])
+@app.route('/login/resident', methods=['POST'])
 @error_decorator
-def login():
+def login_resident():
     data = request.get_json()
-    response = formatter.login(data)
+    response = formatter.login_resident(data)
 
     key = secrets.token_urlsafe(10)
 
     keys.append(key)
     response['key'] = key
     session['KEY'] = key
-    session['USER'] = data['username']
+    session['datetime'] = datetime.datetime.now()
+
+    return response, 201
+
+
+@app.route('/login/employee', methods=['POST'])
+@error_decorator
+def login_employee():
+    data = request.get_json()
+    response = formatter.login_employee(data)
+
+    key = secrets.token_urlsafe(10)
+
+    keys.append(key)
+    response['key'] = key
+    session['KEY'] = key
+    session['datetime'] = datetime.datetime.now()
 
     return response, 201
 
@@ -106,6 +138,7 @@ def login():
 @app.route('/employee', methods=['GET', 'POST', 'PUT', 'DELETE'])
 @error_decorator
 @session_decorator
+@timer_decorator
 def employee():
     data = request.get_json()
     if request.method == 'GET':
@@ -130,6 +163,7 @@ def employee():
 @app.route('/resident', methods=['GET', 'POST', 'PUT', 'DELETE'])
 @error_decorator
 @session_decorator
+@timer_decorator
 def resident():
     data = request.get_json()
     if request.method == 'GET':
@@ -154,6 +188,7 @@ def resident():
 @app.route('/apartment/all', methods=['GET'])
 @error_decorator
 @session_decorator
+@timer_decorator
 def all_apartments():
     data = request.get_json()
     response = formatter.get_all_apartment(data)
@@ -164,6 +199,7 @@ def all_apartments():
 @app.route('/apartment', methods=['GET', 'POST', 'PUT', 'DELETE'])
 @error_decorator
 @session_decorator
+@timer_decorator
 def apartment():
     data = request.get_json()
 
@@ -189,6 +225,7 @@ def apartment():
 @app.route('/tower/all', methods=['GET'])
 @error_decorator
 @session_decorator
+@timer_decorator
 def all_towers():
     data = request.get_json()
     response = formatter.get_all_tower(data)
@@ -199,6 +236,7 @@ def all_towers():
 @app.route('/tower', methods=['GET', 'POST', 'PUT', 'DELETE'])
 @error_decorator
 @session_decorator
+@timer_decorator
 def tower():
     data = request.get_json()
 
@@ -224,6 +262,7 @@ def tower():
 @app.route('/event/all', methods=['GET'])
 @error_decorator
 @session_decorator
+@timer_decorator
 def all_events():
     data = request.get_json()
     response = formatter.get_all_event(data)
@@ -234,6 +273,7 @@ def all_events():
 @app.route('/event', methods=['GET', 'POST', 'PUT', 'DELETE'])
 @error_decorator
 @session_decorator
+@timer_decorator
 def event():
     data = request.get_json()
 
@@ -259,6 +299,7 @@ def event():
 @app.route('/complex_event/all', methods=['GET'])
 @error_decorator
 @session_decorator
+@timer_decorator
 def all_complex_events():
     data = request.get_json()
     response = formatter.get_all_complex_event(data)
@@ -269,6 +310,7 @@ def all_complex_events():
 @app.route('/complex_event', methods=['GET', 'POST', 'PUT', 'DELETE'])
 @error_decorator
 @session_decorator
+@timer_decorator
 def complex_event():
     data = request.get_json()
 
@@ -535,6 +577,8 @@ def service_day():
 
     return response, status_code
 
+
+import database_cleaner
 
 if __name__ == '__main__':
     from controller.formatter import JSONFormatter
