@@ -22,8 +22,8 @@ def timer_decorator(function):
     @wraps(function)
     def timer_checker(*args):
         datetime_diff = session['datetime'] - datetime.datetime.now()
-        if datetime_diff.days >= 3:
-            formatter.clear(session['KEY'])
+        if datetime_diff.days >= 2:
+            formatter.drop_session(session['type'], session['KEY'])
             del session['KEY']
             del session['datetime']
 
@@ -63,13 +63,17 @@ def error_decorator(function):
             status_code = 415
             response = {'result': False, 'message': 'Wrong message format'}
 
+        except ReferenceError:
+            status_code = 400
+            response = {'result': False, 'message': 'Data could not be found'}
+
         except PermissionError:
             status_code = 402
             response = {'result': False, 'message': 'User do not have the privileges to do such operation'}
 
         except ValueError:
             status_code = 400
-            response = {'result': False, 'message': 'Wrong information sent to request'}
+            response = {'result': False, 'message': 'Invalid/Wrong information sent to request'}
 
         except NotImplementedError:
             status_code = 402
@@ -91,7 +95,7 @@ def error_decorator(function):
             status_code = 500
             response = {'result': False, 'message': 'Unknown error -> ' + str(e)}
 
-        return response, status_code
+        return jsonify(response), status_code
 
     return error_handler
 
@@ -577,8 +581,6 @@ def service_day():
 
     return response, status_code
 
-
-import database_cleaner
 
 if __name__ == '__main__':
     from controller.formatter import JSONFormatter
