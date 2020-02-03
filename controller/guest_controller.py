@@ -1,3 +1,6 @@
+from model.condominium import Condominium
+from model.tower import Tower
+from model.apartment import Apartment
 from model.guest import Guest
 from setup import db
 from multiprocessing import Process
@@ -18,20 +21,27 @@ def clear_old_guests():
 
 class GuestController:
     def __init__(self, system_session):
+        self.system_session = system_session
         self.sessions = {system_session}
-        Process(target=clear_old_guests).start()
+        # Process(target=clear_old_guests).start()
 
     def get_guest_by_id(self, guest_id):
-        return Guest.query.filter_by(id=guest_id).first()
+        return Guest.query.get(guest_id)
 
-    def get_guests_by_date(self, start_datetime, end_datetime):
-        return Guest.query.filter(and_(start_datetime <= Guest.arrival <= end_datetime))
+    def get_guests_by_date(self, condominium_id, start_datetime, end_datetime):
+        return Condominium.query.filter_by(id=condominium_id) \
+            .join(Tower) \
+            .join(Apartment) \
+            .join(Guest) \
+            .filter(and_(Guest.arrival >= start_datetime, Guest.arrival <= end_datetime)) \
+            .with_entities(Guest.id, Guest.name, Guest.arrival, Guest.apartment_id).all()
 
-    def register_guest(self, session, name, arrival, apartment_id):
-        if session not in self.sessions:
+    def register_guest(self, session_key, name, arrival, apartment_id):
+        if session_key not in self.sessions:
             raise PermissionError
 
         try:
+            arrival = datetime.datetime.strptime(arrival, '%Y-%m-%d %H:%M')
             guest = Guest(name=name, arrival=arrival, apartment_id=apartment_id)
             db.session.add(guest)
             db.session.commit()
@@ -42,12 +52,20 @@ class GuestController:
             db.session.rollback()
             return None
 
-    def remove_guest(self, session, guest_id):
-        if session not in self.sessions:
+    def remove_guest(self, session_key, guest_id):
+        if session_key not in self.sessions:
             raise PermissionError
 
-        deleted = Guest.query.filter_by(id=guest_id).delete()
-        if deleted:
+        guest = Guest.query.get(guest_id)
+        if guest:
+            db.session.delete(guest)
             db.session.commit()
             return True
         return False
+
+    def drop_session(self, session_key):
+        if session_key not in self.sessions or session_key == self.system_session:
+            raise ValueError
+
+        self.sessions.remove(session_key)
+        return True

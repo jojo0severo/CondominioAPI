@@ -10,9 +10,9 @@ class Resident(db.Model):
     name = db.Column(db.String(50), nullable=False)
     birthday = db.Column(db.Date, nullable=False)
     photo_location = db.Column(db.String(200), nullable=True, default='data/photos/default/resident.png')
-    apartment_id = db.Column(db.Integer, db.ForeignKey('apartment.id'), nullable=False)
+    apartment_id = db.Column(db.Integer, db.ForeignKey('apartment.id', ondelete='CASCADE'), nullable=False)
 
-    apartment = db.relationship('Apartment', backref='residents', lazy=True)
+    apartment = db.relationship('Apartment', backref=db.backref('residents', lazy=True, cascade='all, delete'), lazy=True)
 
     def __repr__(self):
         return f'Resident(id={self.id}, ' \

@@ -7,44 +7,53 @@ from sqlalchemy import exc, and_
 
 
 class AddressController:
-    def __init__(self, system_session):
-        self.system_session = system_session
-        self.sessions = {system_session}
+    def __init__(self, system_session_key):
+        self.system_session_key = system_session_key
 
-    def get_country_states(self, session, country_identifier):
-        if session not in self.sessions:
+    def get_country_states(self, session_key, country_identifier):
+        if session_key != self.system_session_key:
             raise PermissionError
 
         if isinstance(country_identifier, str):
-            return Country.query.filter_by(name=country_identifier).first().states
+            country = Country.query.filter_by(name=country_identifier).first()
         elif isinstance(country_identifier, int):
-            return Country.query.filter_by(id=country_identifier).first().states
+            country = Country.query.get(country_identifier)
         else:
             raise TypeError
 
-    def get_state_cities(self, session, state_id):
-        if session not in self.sessions:
+        if country is not None:
+            return country.states
+
+        raise ReferenceError
+
+    def get_state_cities(self, session_key, state_id):
+        if session_key != self.system_session_key:
             raise PermissionError
 
-        return State.query.filter_by(id=state_id).first().cities
+        state = State.query.get(state_id)
+        if state is not None:
+            return state.cities
 
-    def get_city_addresses(self, session, city_id):
-        if session not in self.sessions:
+        raise ReferenceError
+
+    def get_city_addresses(self, session_key, city_id):
+        if session_key != self.system_session_key:
             raise PermissionError
 
-        return City.query.filter_by(id=city_id).first().addresses
+        city = City.query.get(city_id)
+        if city is not None:
+            return city.addresses
 
-    def get_address_by_id(self, address_id):
-        return Address.query.filter_by(id=address_id).first()
+        raise ReferenceError
 
-    def get_address_by_names(self, street_name, city_name, state_name, country_name):
-        return Address.query.filter_by(street_name=street_name) \
-            .join(City).filter_by(name=city_name) \
-            .join(State).filter_by(name=state_name) \
-            .join(Country).filter_by(name=country_name).first()
+    def get_address_by_id(self, session_key, address_id):
+        if session_key != self.system_session_key:
+            raise PermissionError
 
-    def register_address_by_names(self, session, street_name, neighbourhood, city_name, state_name, country_name):
-        if session not in self.sessions:
+        return Address.query.filter_by(id=address_id).join(City).join(State).join(Country).first()
+
+    def register_address_by_names(self, session_key, street_name, neighbourhood, city_name, state_name, country_name):
+        if session_key != self.system_session_key:
             raise PermissionError
 
         try:
@@ -85,12 +94,13 @@ class AddressController:
             db.session.rollback()
             return None
 
-    def remove_address_by_id(self, session, address_id):
-        if session != self.system_session:
+    def remove_address_by_id(self, session_key, address_id):
+        if session_key != self.system_session_key:
             raise PermissionError
 
-        deleted = Address.query.filter_by(id=address_id).delete()
-        if deleted:
+        address = Address.query.get(address_id)
+        if address is not None:
+            db.session.delete(address)
             db.session.commit()
             return True
         return False

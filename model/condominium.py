@@ -9,9 +9,9 @@ class Condominium(db.Model):
     name = db.Column(db.String(60), nullable=False)
     street_number = db.Column(db.Integer, nullable=False)
     photo_location = db.Column(db.String(200), nullable=True, default='data/photos/default/condominium.png')
-    address_id = db.Column(db.Integer, db.ForeignKey('address.id'), nullable=False)
+    address_id = db.Column(db.Integer, db.ForeignKey('address.id', ondelete='CASCADE'), nullable=False)
 
-    address = db.relationship('Address', backref='condominiums', lazy=True)
+    address = db.relationship('Address', backref=db.backref('condominiums', lazy=True, cascade='all, delete'), lazy=True)
 
     def __repr__(self):
         return f'Condominium(id={self.id}, ' \

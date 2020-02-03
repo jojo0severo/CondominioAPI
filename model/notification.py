@@ -9,9 +9,9 @@ class Notification(db.Model):
     title = db.Column(db.String(50), nullable=False)
     text = db.Column(db.String(300), nullable=False)
     finish_date = db.Column(db.Date, nullable=True)
-    condominium_id = db.Column(db.Integer, db.ForeignKey('condominium.id'), nullable=False)
+    condominium_id = db.Column(db.Integer, db.ForeignKey('condominium.id', ondelete='CASCADE'), nullable=False)
 
-    condominium = db.relationship('Condominium', backref='notifications', lazy=True)
+    condominium = db.relationship('Condominium', backref=db.backref('notifications', lazy=True, cascade='all, delete'), lazy=True)
 
     def __repr__(self):
         return f'Notification(id={self.id}, ' \

@@ -7,9 +7,9 @@ class City(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(60), nullable=True)
-    state_id = db.Column(db.Integer, db.ForeignKey('state.id'), nullable=False)
+    state_id = db.Column(db.Integer, db.ForeignKey('state.id', ondelete='CASCADE'), nullable=False)
 
-    state = db.relationship('State', backref='cities', lazy=True)
+    state = db.relationship('State', backref=db.backref('cities', lazy=True, cascade='all, delete'), lazy=True)
 
     def __repr__(self):
         return f'City(id={self.id}, name={self.name})'

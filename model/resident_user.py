@@ -7,9 +7,9 @@ class ResidentUser(db.Model):
 
     username = db.Column(db.String(25), primary_key=True)
     password = db.Column(db.String(30), nullable=False)
-    resident_id = db.Column(db.Integer, db.ForeignKey('resident.id'), nullable=False)
+    resident_id = db.Column(db.Integer, db.ForeignKey('resident.id', ondelete='CASCADE'), nullable=False)
 
-    resident = db.relationship('Resident', backref='user', lazy=True, uselist=False)
+    resident = db.relationship('Resident', backref=db.backref('user', lazy=True, cascade='all, delete'), lazy=True, uselist=False)
 
     def __repr__(self):
         return f'ResidentUser(username={self.username})'
