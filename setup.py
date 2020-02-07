@@ -3,7 +3,7 @@ import secrets
 import datetime
 from functools import wraps
 from flask import Flask, request, session, jsonify
-from flask_socketio import SocketIO
+from flask_socketio import SocketIO, emit, join_room
 from flask_sqlalchemy import SQLAlchemy
 
 
@@ -25,6 +25,7 @@ def timer_decorator(function):
         if datetime_diff.days >= 2:
             formatter.drop_session(session['type'], session['KEY'])
             del session['KEY']
+            del session['room']
             del session['datetime']
 
         return function(*args)
@@ -35,17 +36,18 @@ def timer_decorator(function):
 def session_decorator(function):
     @wraps(function)
     def session_checker(*args):
-        key = request.get_json()['key']
         session_key = session.get('KEY')
 
         if not session_key:
             return {'message': 'User is not logged or session expired'}, 401
 
+        key = request.get_json()['key']
+
+        if key != session_key:
+            return {'message': 'Invalid key'}, 403
+
         elif key not in keys:
             return {'message': 'Key not recognized'}, 401
-
-        elif key != session_key:
-            return {'message': 'Corrupted key'}, 403
 
         else:
             return function(*args)
@@ -87,6 +89,10 @@ def error_decorator(function):
             status_code = 400
             response = {'result': False, 'message': 'Wrong values type sent'}
 
+        except ConnectionRefusedError:
+            status_code = 400
+            response = {'result': False, 'message': 'User is not logged'}
+
         except RuntimeError:
             status_code = 500
             response = {'result': False, 'message': 'Something went wrong with the application'}
@@ -107,486 +113,217 @@ def session_configuration():
     app.permanent_session_lifetime = datetime.timedelta(days=365)
 
 
-@app.route('/login/resident', methods=['POST'])
+@socket.on('connect')
+def verify_connection():
+    session_key = session.get('KEY')
+
+    if not session_key:
+        raise ConnectionRefusedError
+
+    key = request.get_json()['key']
+    if key != session_key:
+        raise ConnectionRefusedError
+
+    elif key not in keys:
+        raise ConnectionRefusedError
+
+
+@app.route('/login/<login_type>', methods=['POST'])
 @error_decorator
-def login_resident():
+def login(login_type):
     data = request.get_json()
-    response = formatter.login_resident(data)
+    if login_type == 'resident':
+        response, room = formatter.login_resident(data)
+        join_room(room + '_resident', request.sid)
+
+    elif login_type == 'employee':
+        response, room = formatter.login_employee(data)
+        join_room(room + '_employee', request.sid)
+
+    else:
+        raise ValueError
 
     key = secrets.token_urlsafe(10)
 
     keys.append(key)
     response['key'] = key
     session['KEY'] = key
+    session['room'] = room
     session['datetime'] = datetime.datetime.now()
 
     return response, 201
 
 
-@app.route('/login/employee', methods=['POST'])
+@app.route('/register/<registration_type>')
 @error_decorator
-def login_employee():
+def register(registration_type):
     data = request.get_json()
-    response = formatter.login_employee(data)
+    if registration_type == 'resident':
+        response, room = formatter.register_resident(data)
+        join_room(room + '_resident', request.sid)
+
+    elif registration_type == 'employee':
+        response, room = formatter.register_employee(data)
+        join_room(room + '_employee', request.sid)
+
+    else:
+        raise ValueError
 
     key = secrets.token_urlsafe(10)
 
     keys.append(key)
     response['key'] = key
     session['KEY'] = key
+    session['room'] = room
     session['datetime'] = datetime.datetime.now()
 
     return response, 201
 
 
-@app.route('/employee', methods=['GET', 'POST', 'PUT', 'DELETE'])
-@error_decorator
+@app.route('/employee', methods=['GET'])
 @session_decorator
-@timer_decorator
+@error_decorator
 def employee():
     data = request.get_json()
-    if request.method == 'GET':
-        response = formatter.get_employee(session.get('USER'), data)
-        status_code = 200
-
-    elif request.method == 'POST':
-        response = formatter.register_employee(session.get('USER'), data)
-        status_code = 201
-
-    elif request.method == 'PUT':
-        response = formatter.edit_employee(session.get('USER'), data)
-        status_code = 205
-
-    else:
-        response = formatter.delete_employee(session.get('USER'), data)
-        status_code = 205
-
-    return response, status_code
-
-
-@app.route('/resident', methods=['GET', 'POST', 'PUT', 'DELETE'])
-@error_decorator
-@session_decorator
-@timer_decorator
-def resident():
-    data = request.get_json()
-    if request.method == 'GET':
-        response = formatter.get_resident(session.get('USER'), data)
-        status_code = 200
-
-    elif request.method == 'POST':
-        response = formatter.register_resident(session.get('USER'), data)
-        status_code = 201
-
-    elif request.method == 'PUT':
-        response = formatter.edit_resident(session.get('USER'), data)
-        status_code = 205
-
-    else:
-        response = formatter.delete_resident(session.get('USER'), data)
-        status_code = 205
-
-    return response, status_code
-
-
-@app.route('/apartment/all', methods=['GET'])
-@error_decorator
-@session_decorator
-@timer_decorator
-def all_apartments():
-    data = request.get_json()
-    response = formatter.get_all_apartment(data)
+    response = formatter.get_employees(data)
 
     return response, 200
 
 
-@app.route('/apartment', methods=['GET', 'POST', 'PUT', 'DELETE'])
-@error_decorator
+@app.route('/condominium', methods=['GET'])
 @session_decorator
-@timer_decorator
-def apartment():
-    data = request.get_json()
-
-    if request.method == 'GET':
-        response = formatter.get_apartment(data)
-        status_code = 200
-
-    elif request.method == 'POST':
-        response = formatter.register_apartment(data)
-        status_code = 201
-
-    elif request.method == 'PUT':
-        response = formatter.edit_apartment(data)
-        status_code = 205
-
-    else:
-        response = formatter.delete_apartment(data)
-        status_code = 205
-
-    return response, status_code
-
-
-@app.route('/tower/all', methods=['GET'])
 @error_decorator
-@session_decorator
-@timer_decorator
-def all_towers():
+def condominium():
     data = request.get_json()
-    response = formatter.get_all_tower(data)
+    response = formatter.get_condominium(data)
 
     return response, 200
 
 
-@app.route('/tower', methods=['GET', 'POST', 'PUT', 'DELETE'])
-@error_decorator
+@app.route('/tower', methods=['GET'])
 @session_decorator
-@timer_decorator
+@error_decorator
 def tower():
     data = request.get_json()
-
-    if request.method == 'GET':
-        response = formatter.get_tower(data)
-        status_code = 200
-
-    elif request.method == 'POST':
-        response = formatter.register_tower(data)
-        status_code = 201
-
-    elif request.method == 'PUT':
-        response = formatter.edit_tower(data)
-        status_code = 205
-
-    else:
-        response = formatter.remove_tower(data)
-        status_code = 205
-
-    return response, status_code
-
-
-@app.route('/event/all', methods=['GET'])
-@error_decorator
-@session_decorator
-@timer_decorator
-def all_events():
-    data = request.get_json()
-    response = formatter.get_all_event(data)
+    response = formatter.get_towers(data)
 
     return response, 200
 
 
-@app.route('/event', methods=['GET', 'POST', 'PUT', 'DELETE'])
-@error_decorator
+@app.route('/apartment', methods=['GET'])
 @session_decorator
-@timer_decorator
+@error_decorator
+def apartment():
+    data = request.get_json()
+    response = formatter.get_apartments(data)
+
+    return response, 200
+
+
+@app.route('/event', methods=['GET', 'POST', 'DELETE'])
+@session_decorator
+@error_decorator
 def event():
     data = request.get_json()
-
     if request.method == 'GET':
-        response = formatter.get_event(data)
-        status_code = 200
+        response, room = formatter.get_events(data)
 
     elif request.method == 'POST':
-        response = formatter.register_event(data)
-        status_code = 201
-
-    elif request.method == 'PUT':
-        response = formatter.edit_event(data)
-        status_code = 205
+        response, room = formatter.register_event(data)
+        emit('event', {'type': 'registration', 'data': data}, room=session['room'] + '_resident')
+        emit('event', {'type': 'registration', 'data': data}, room=session['room'] + '_employee')
 
     else:
-        response = formatter.remove_event(data)
-        status_code = 205
+        response, room = formatter.remove_event(data)
+        emit('event', {'type': 'deletion', 'data': data}, room=session['room'] + '_resident')
+        emit('event', {'type': 'deletion', 'data': data}, room=session['room'] + '_employee')
 
-    return response, status_code
+    return response, 204
 
 
-@app.route('/complex_event/all', methods=['GET'])
-@error_decorator
+@app.route('/notification', methods=['GET', 'POST', 'DELETE'])
 @session_decorator
-@timer_decorator
-def all_complex_events():
-    data = request.get_json()
-    response = formatter.get_all_complex_event(data)
-
-    return response, 200
-
-
-@app.route('/complex_event', methods=['GET', 'POST', 'PUT', 'DELETE'])
 @error_decorator
-@session_decorator
-@timer_decorator
-def complex_event():
+def notification():
     data = request.get_json()
-
     if request.method == 'GET':
-        response = formatter.get_complex_event(data)
-        status_code = 200
+        response = formatter.get_notifications(data)
 
     elif request.method == 'POST':
-        response = formatter.register_complex_event(data)
-        status_code = 201
-
-    elif request.method == 'PUT':
-        response = formatter.edit_complex_event(data)
-        status_code = 205
+        response = formatter.register_notification(data)
+        emit('notification', {'type': 'registration', 'data': data}, room=session['room'] + '_resident')
+        emit('notification', {'type': 'registration', 'data': data}, room=session['room'] + '_employee')
 
     else:
-        response = formatter.delete_complex_event(data)
-        status_code = 205
+        response = formatter.remove_notification(data)
+        emit('notification', {'type': 'deletion', 'data': data}, room=session['room'] + '_resident')
+        emit('notification', {'type': 'deletion', 'data': data}, room=session['room'] + '_employee')
 
-    return response, status_code
+    return response, 204
 
 
-@app.route('/resident_event/all', methods=['GET'])
-@error_decorator
+@app.route('/guest', methods=['GET', 'POST', 'DELETE'])
 @session_decorator
-def all_resident_events():
-    data = request.get_json()
-    response = formatter.get_all_resident_event(data)
-
-    return response, 200
-
-
-@app.route('/resident_event', methods=['GET', 'POST', 'PUT', 'DELETE'])
 @error_decorator
-@session_decorator
-def resident_event():
+def guest():
     data = request.get_json()
-
     if request.method == 'GET':
-        response = formatter.get_resident_event(data)
-        status_code = 200
+        response = formatter.get_guests(data)
 
     elif request.method == 'POST':
-        response = formatter.register_resident_event(data)
-        status_code = 201
-
-    elif request.method == 'PUT':
-        response = formatter.edit_resident_event(data)
-        status_code = 205
+        response = formatter.register_guest(data)
+        emit('guest', {'type': 'registration', 'data': data}, room=session['room'] + '_employee')
 
     else:
-        response = formatter.delete_resident_event(data)
-        status_code = 205
+        response = formatter.remove_guest(data)
+        emit('guest', {'type': 'deletion', 'data': data}, room=session['room'] + '_employee')
 
-    return response, status_code
+    return response, 204
 
 
-@app.route('/warning/all', methods=['GET'])
-@error_decorator
+@app.route('/service', methods=['GET', 'POST', 'DELETE'])
 @session_decorator
-def all_warnings():
-    data = request.get_json()
-    response = formatter.get_all_warning(data)
-
-    return response, 200
-
-
-@app.route('/warning', methods=['GET', 'POST', 'PUT', 'DELETE'])
 @error_decorator
-@session_decorator
-def warning():
-    data = request.get_json()
-
-    if request.method == 'GET':
-        response = formatter.get_warning(data)
-        status_code = 200
-
-    elif request.method == 'POST':
-        response = formatter.register_warning(data)
-        status_code = 201
-
-    elif request.method == 'PUT':
-        response = formatter.edit_warning(data)
-        status_code = 205
-
-    else:
-        response = formatter.delete_warning(data)
-        status_code = 205
-
-    return response, status_code
-
-
-@app.route('/rule/all', methods=['GET'])
-@error_decorator
-@session_decorator
-def all_rules():
-    data = request.get_json()
-    response = formatter.get_all_rule(data)
-
-    return response, 200
-
-
-@app.route('/rule', methods=['GET', 'POST', 'PUT', 'DELETE'])
-@error_decorator
-@session_decorator
-def rule():
-    data = request.get_json()
-
-    if request.method == 'GET':
-        response = formatter.get_rule(data)
-        status_code = 200
-
-    elif request.method == 'POST':
-        response = formatter.register_rule(data)
-        status_code = 201
-
-    elif request.method == 'PUT':
-        response = formatter.edit_rule(data)
-        status_code = 205
-
-    else:
-        response = formatter.delete_rule(data)
-        status_code = 205
-
-    return response, status_code
-
-
-@app.route('/shop/all', methods=['GET'])
-@error_decorator
-@session_decorator
-def all_shops():
-    data = request.get_json()
-    response = formatter.get_all_shop(data)
-
-    return response, 200
-
-
-@app.route('/shop', methods=['GET', 'POST', 'PUT', 'DELETE'])
-@error_decorator
-@session_decorator
-def shop():
-    data = request.get_json()
-
-    if request.method == 'GET':
-        response = formatter.get_shop(data)
-        status_code = 200
-
-    elif request.method == 'POST':
-        response = formatter.register_shop(data)
-        status_code = 201
-
-    elif request.method == 'PUT':
-        response = formatter.edit_shop(data)
-        status_code = 205
-
-    else:
-        response = formatter.delete_shop(data)
-        status_code = 205
-
-    return response, status_code
-
-
-@app.route('/<shop>/item/all', methods=['GET'])
-@error_decorator
-@session_decorator
-def all_items(shop_name):
-    data = request.get_json()
-    response = formatter.get_all_item(shop_name, data)
-
-    return response, 200
-
-
-@app.route('/<shop>/item', methods=['GET', 'POST', 'PUT', 'DELETE'])
-@error_decorator
-@session_decorator
-def item(shop_name):
-    data = request.get_json()
-
-    if request.method == 'GET':
-        response = formatter.get_item(shop_name, data)
-        status_code = 200
-
-    elif request.method == 'POST':
-        response = formatter.register_item(shop_name, data)
-        status_code = 201
-
-    elif request.method == 'PUT':
-        response = formatter.edit_item(shop_name, data)
-        status_code = 205
-
-    else:
-        response = formatter.delete_item(shop_name, data)
-        status_code = 205
-
-    return response, status_code
-
-
-@app.route('/service/all', methods=['GET'])
-@error_decorator
-@session_decorator
-def all_services():
-    data = request.get_json()
-    response = formatter.get_all_service(data)
-
-    return response, 200
-
-
-@app.route('/service', methods=['GET', 'POST', 'PUT', 'DELETE'])
-@error_decorator
-@session_decorator
 def service():
     data = request.get_json()
-
     if request.method == 'GET':
-        response = formatter.get_service(data)
-        status_code = 200
+        response = formatter.get_services(data)
 
     elif request.method == 'POST':
         response = formatter.register_service(data)
-        status_code = 201
-
-    elif request.method == 'PUT':
-        response = formatter.edit_service(data)
-        status_code = 205
+        emit('service', {'type': 'registration', 'data': data}, room=session['room'] + '_employee')
 
     else:
-        response = formatter.delete_service(data)
-        status_code = 205
+        response = formatter.remove_service(data)
+        emit('service', {'type': 'deletion', 'data': data}, room=session['room'] + '_employee')
 
-    return response, status_code
+    return response, 204
 
 
-@app.route('/service_day/all', methods=['GET'])
-@error_decorator
+@app.route('/rule', methods=['GET', 'POST', 'DELETE'])
 @session_decorator
-def all_service_days():
-    data = request.get_json()
-    response = formatter.get_all_service_day(data)
-
-    return response, 200
-
-
-@app.route('/service_day', methods=['GET', 'POST', 'PUT', 'DELETE'])
 @error_decorator
-@session_decorator
-def service_day():
+def rule():
     data = request.get_json()
-
     if request.method == 'GET':
-        response = formatter.get_service_day(data)
-        status_code = 200
+        response = formatter.get_rules(data)
 
     elif request.method == 'POST':
-        response = formatter.register_service_day(data)
-        status_code = 201
-
-    elif request.method == 'PUT':
-        response = formatter.edit_service_day(data)
-        status_code = 205
+        response = formatter.register_rule(data)
+        emit('rule', {'type': 'registration', 'data': data}, room=session['room'] + '_resident')
+        emit('rule', {'type': 'registration', 'data': data}, room=session['room'] + '_employee')
 
     else:
-        response = formatter.delete_service_day(data)
-        status_code = 205
+        response = formatter.remove_rule(data)
+        emit('rule', {'type': 'deletion', 'data': data}, room=session['room'] + '_resident')
+        emit('rule', {'type': 'deletion', 'data': data}, room=session['room'] + '_employee')
 
-    return response, status_code
+    return response, 204
 
 
 if __name__ == '__main__':
+    import database_cleaner
     from controller.formatter import JSONFormatter
 
     formatter = JSONFormatter()
-
-    import database_cleaner
-
     socket.run(app)
