@@ -7,13 +7,7 @@ from sqlalchemy import exc, and_
 
 
 class AddressController:
-    def __init__(self, system_session_key):
-        self.system_session_key = system_session_key
-
-    def get_country_states(self, session_key, country_identifier):
-        if session_key != self.system_session_key:
-            raise PermissionError
-
+    def get_country_states(self, country_identifier):
         if isinstance(country_identifier, str):
             country = Country.query.filter_by(name=country_identifier).first()
         elif isinstance(country_identifier, int):
@@ -21,41 +15,33 @@ class AddressController:
         else:
             raise TypeError
 
-        if country is not None:
-            return country.states
+        if country is None:
+            raise ReferenceError
 
-        raise ReferenceError
+        return country.states
 
-    def get_state_cities(self, session_key, state_id):
-        if session_key != self.system_session_key:
-            raise PermissionError
-
+    def get_state_cities(self, state_id):
         state = State.query.get(state_id)
-        if state is not None:
-            return state.cities
+        if state is None:
+            raise ReferenceError
 
-        raise ReferenceError
+        return state.cities
 
-    def get_city_addresses(self, session_key, city_id):
-        if session_key != self.system_session_key:
-            raise PermissionError
-
+    def get_city_addresses(self, city_id):
         city = City.query.get(city_id)
-        if city is not None:
-            return city.addresses
+        if city is None:
+            raise ReferenceError
 
-        raise ReferenceError
+        return city.addresses
 
-    def get_address_by_id(self, session_key, address_id):
-        if session_key != self.system_session_key:
-            raise PermissionError
+    def get_address_by_id(self, address_id):
+        address = Address.query.filter_by(id=address_id).join(City).join(State).join(Country).first()
+        if address is None:
+            raise ReferenceError
 
-        return Address.query.filter_by(id=address_id).join(City).join(State).join(Country).first()
+        return address
 
-    def register_address_by_names(self, session_key, street_name, neighbourhood, city_name, state_name, country_name):
-        if session_key != self.system_session_key:
-            raise PermissionError
-
+    def register_address_by_names(self, street_name, neighbourhood, city_name, state_name, country_name):
         try:
             country = Country(name=country_name)
             db.session.add(country)
@@ -88,19 +74,16 @@ class AddressController:
             db.session.add(address)
             db.session.commit()
 
-            return address
+            return address.id
 
         except exc.IntegrityError:
             db.session.rollback()
             return None
 
-    def remove_address_by_id(self, session_key, address_id):
-        if session_key != self.system_session_key:
-            raise PermissionError
-
+    def remove_address_by_id(self, address_id):
         address = Address.query.get(address_id)
-        if address is not None:
-            db.session.delete(address)
-            db.session.commit()
-            return True
-        return False
+        if address is None:
+            raise ReferenceError
+
+        db.session.delete(address)
+        db.session.commit()

@@ -3,7 +3,7 @@ from setup import db
 
 class City(db.Model):
     __tablename__ = 'city'
-    __table_args__ = (db.UniqueConstraint('name', 'state_id'),)
+    __table_args__ = (db.UniqueConstraint('name', 'state_id'), db.Index('city_idx', 'name', 'state_id'))
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(60), nullable=True)

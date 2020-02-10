@@ -1,6 +1,69 @@
 from model.resident import Resident
 from model.resident_user import ResidentUser
+from setup import db
+from sqlalchemy import exc, and_
+import datetime
 
 
 class ResidentController:
-    pass
+    def do_login(self, username, password):
+        user = ResidentUser.query.get(username)
+        return user is not None and user.password == password
+
+    def get_resident_by_id(self, resident_id):
+        resident = Resident.query.get(resident_id)
+        if not resident:
+            raise ReferenceError
+
+        return resident
+
+    def get_resident_user_by_resident(self, cpf, name, birthday, apartment_id):
+        resident = Resident.query.filter(and_(Resident.cpf == cpf, Resident.apartment_id == apartment_id)).first()
+        if not resident:
+            raise ReferenceError
+
+        if resident.name != name or resident.birthday != birthday:
+            raise PermissionError
+
+        return resident.user
+
+    def register_resident(self, username, password, cpf, name, birthday, photo_location, apartment_id):
+        try:
+            birthday = datetime.datetime.strptime(birthday, '%Y-%m-%d')
+            resident = Resident(cpf=cpf, name=name, birthday=birthday, photo_location=photo_location, apartment_id=apartment_id)
+            db.session.add(resident)
+            db.session.commit()
+
+        except exc.IntegrityError:
+            db.session.rollback()
+            return False, 0
+
+        try:
+            resident_user = ResidentUser(username=username, password=password, resident_id=resident.id)
+            db.session.add(resident_user)
+            db.session.commit()
+
+        except exc.IntegrityError:
+            db.session.rollback()
+            return False, resident.id
+
+        return True, 0
+
+    def remove_resident(self, username, password, cpf, name, birthday, apartment_id):
+        resident_user = ResidentUser.query.get(username)
+        if not resident_user:
+            raise ReferenceError
+
+        if resident_user.password != password:
+            raise PermissionError
+
+        resident = Resident.query.filter(and_(Resident.cpf == cpf, Resident.apartment_id == apartment_id)).first()
+        if not resident:
+            raise ReferenceError
+
+        if resident.name != name or resident.birthday != birthday:
+            raise PermissionError
+
+        db.session.delete(resident_user)
+        db.session.delete(resident)
+        db.session.commit()

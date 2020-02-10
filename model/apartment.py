@@ -3,7 +3,7 @@ from setup import db
 
 class Apartment(db.Model):
     __tablename__ = 'apartment'
-    __table_args__ = (db.UniqueConstraint('apt_number', 'tower_id'),)
+    __table_args__ = (db.UniqueConstraint('apt_number', 'tower_id'), db.Index('apt_idx', 'apt_number', 'tower_id'))
 
     id = db.Column(db.Integer, primary_key=True)
     apt_number = db.Column(db.Integer, nullable=False)

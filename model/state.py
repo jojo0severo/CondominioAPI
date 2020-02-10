@@ -3,7 +3,7 @@ from setup import db
 
 class State(db.Model):
     __tablename__ = 'state'
-    __table_args__ = (db.UniqueConstraint('name', 'country_id'),)
+    __table_args__ = (db.UniqueConstraint('name', 'country_id'), db.Index('state_idx', 'name', 'country_id'))
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(60), nullable=False)

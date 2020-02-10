@@ -583,7 +583,7 @@ def service_day():
 
 
 if __name__ == '__main__':
-    from controller.formatter import JSONFormatter
+    from controller.permission_manager import JSONFormatter
 
     formatter = JSONFormatter()
 

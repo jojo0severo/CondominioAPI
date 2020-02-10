@@ -3,7 +3,7 @@ from setup import db
 
 class Tower(db.Model):
     __tablename__ = 'tower'
-    __table_args__ = (db.UniqueConstraint('name', 'condominium_id'),)
+    __table_args__ = (db.UniqueConstraint('name', 'condominium_id'), db.Index('tower_idx', 'name', 'condominium_id'))
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(10), nullable=False)
