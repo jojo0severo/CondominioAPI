@@ -3,7 +3,7 @@ from setup import db
 
 class Condominium(db.Model):
     __tablename__ = 'condominium'
-    __table_args__ = (db.UniqueConstraint('street_number', 'address_id'),)
+    __table_args__ = (db.UniqueConstraint('street_number', 'address_id'), db.Index('cond_idx', 'street_number', 'address_id'))
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(60), nullable=False)

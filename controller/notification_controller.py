@@ -1,6 +1,5 @@
 from model.notification import Notification
 from setup import db
-from multiprocessing import Process
 from sqlalchemy import exc
 import datetime
 import time
@@ -17,44 +16,30 @@ def clear_old_notifications():
 
 
 class NotificationController:
-    def __init__(self, system_session_key):
-        self.system_session_key = system_session_key
-        self.session_keys = {system_session_key}
-        # Process(target=clear_old_notifications).start()
-
     def get_notification_by_id(self, notification_id):
-        return Notification.query.get(notification_id)
+        notification = Notification.query.get(notification_id)
+        if not notification:
+            raise ReferenceError
 
-    def register_notification(self, session_key, noti_type, title, text, finish_date, condominium_id):
-        if session_key not in self.session_keys:
-            raise PermissionError
+        return notification
 
+    def register_notification(self, noti_type, title, text, finish_date, condominium_id):
         try:
             finish_date = datetime.datetime.strptime(finish_date, '%Y-%m-%d')
             notification = Notification(type=noti_type, title=title, text=text, finish_date=finish_date, condominium_id=condominium_id)
             db.session.add(notification)
             db.session.commit()
 
-            return notification
+            return notification.id
 
         except exc.IntegrityError:
             db.session.rollback()
             return None
 
-    def remove_notification(self, session_key, notification_id):
-        if session_key not in self.session_keys:
-            raise PermissionError
-
+    def remove_notification(self, notification_id):
         notification = Notification.query.get(notification_id)
-        if notification is not None:
-            db.session.delete(notification)
-            db.session.commit()
-            return True
-        return False
+        if not notification:
+            raise ReferenceError
 
-    def drop_session(self, session_key):
-        if session_key not in self.session_keys or session_key == self.system_session_key:
-            raise ValueError
-
-        self.session_keys.remove(session_key)
-        return True
+        db.session.delete(notification)
+        db.session.commit()

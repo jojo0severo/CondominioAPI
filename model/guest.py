@@ -3,7 +3,10 @@ from setup import db
 
 class Guest(db.Model):
     __tablename__ = 'guest'
-    __table_args__ = (db.UniqueConstraint('name', 'arrival', 'apartment_id'),)
+    __table_args__ = (
+        db.UniqueConstraint('name', 'arrival', 'apartment_id'),
+        db.Index('guest_idx', 'name', 'arrival', 'apartment_id')
+    )
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50), nullable=False)

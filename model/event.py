@@ -3,7 +3,10 @@ from setup import db
 
 class Event(db.Model):
     __tablename__ = 'event'
-    __table_args__ = (db.UniqueConstraint('event_type_id', 'start_datetime', 'end_datetime'),)
+    __table_args__ = (
+        db.UniqueConstraint('event_type_id', 'start_datetime', 'end_datetime'),
+        db.Index('event_idx', 'event_type_id', 'start_datetime', 'end_datetime')
+    )
 
     id = db.Column(db.Integer, primary_key=True)
     start_datetime = db.Column(db.DateTime, nullable=False)

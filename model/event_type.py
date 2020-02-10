@@ -3,7 +3,7 @@ from setup import db
 
 class EventType(db.Model):
     __tablename__ = 'eventtype'
-    __table_args__ = (db.UniqueConstraint('name', 'condominium_id'),)
+    __table_args__ = (db.UniqueConstraint('name', 'condominium_id'), db.Index('event_type_idx', 'name', 'condominium_id'))
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(30), nullable=False)
