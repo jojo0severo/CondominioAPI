@@ -8,7 +8,7 @@ import datetime
 class ResidentController:
     def do_login(self, username, password):
         user = ResidentUser.query.get(username)
-        return user is not None and user.password == password
+        return user is not None and user.password == password, user.resident
 
     def get_resident_by_id(self, resident_id):
         resident = Resident.query.get(resident_id)
@@ -31,23 +31,16 @@ class ResidentController:
         try:
             birthday = datetime.datetime.strptime(birthday, '%Y-%m-%d')
             resident = Resident(cpf=cpf, name=name, birthday=birthday, photo_location=photo_location, apartment_id=apartment_id)
+            resident.user = ResidentUser(username=username, password=password)
+
             db.session.add(resident)
             db.session.commit()
 
         except exc.IntegrityError:
             db.session.rollback()
-            return False, 0
+            return False, None
 
-        try:
-            resident_user = ResidentUser(username=username, password=password, resident_id=resident.id)
-            db.session.add(resident_user)
-            db.session.commit()
-
-        except exc.IntegrityError:
-            db.session.rollback()
-            return False, resident.id
-
-        return True, 0
+        return True, resident
 
     def remove_resident(self, username, password, cpf, name, birthday, apartment_id):
         resident_user = ResidentUser.query.get(username)

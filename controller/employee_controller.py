@@ -8,7 +8,7 @@ import datetime
 class EmployeeController:
     def do_login(self, username, password):
         user = EmployeeUser.query.get(username)
-        return user is not None and user.password == password
+        return user is not None and user.password == password, user.employee
 
     def get_employee_by_id(self, employee_id):
         employee = Employee.query.get(employee_id)
@@ -34,23 +34,16 @@ class EmployeeController:
         try:
             birthday = datetime.datetime.strptime(birthday, '%Y-%m-%d')
             employee = Employee(cpf=cpf, name=name, birthday=birthday, photo_location=photo_location, role=role, condominium_id=condominium_id)
+            employee.user = EmployeeUser(username=username, password=password)
+
             db.session.add(employee)
             db.session.commit()
 
         except exc.IntegrityError:
             db.session.rollback()
-            return False, 0
+            return False, None
 
-        try:
-            employee_user = EmployeeUser(username=username, password=password, employee_id=employee.id)
-            db.session.add(employee_user)
-            db.session.commit()
-
-        except exc.IntegrityError:
-            db.session.rollback()
-            return False, employee.id
-
-        return True, 0
+        return True, employee
 
     def remove_employee(self, username, password, cpf, name, role, birthday, condominium_id):
         employee_user = EmployeeUser.query.get(username)

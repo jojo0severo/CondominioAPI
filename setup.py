@@ -1,36 +1,28 @@
-import json
 import secrets
 import datetime
 from functools import wraps
-from flask import Flask, request, session, jsonify
-from flask_socketio import SocketIO, emit, join_room
+from flask import Flask, request, session
+from flask_socketio import SocketIO, emit, join_room, disconnect
 from flask_sqlalchemy import SQLAlchemy
+from flask_cors import CORS
+from flask_wtf.csrf import CSRFProtect
 
 
 app = Flask(__name__)
 app.config['JSON_SORT_KEYS'] = False
-app.config['SECRET_KEY'] = secrets.token_urlsafe(10)
+app.config['SECRET_KEY'] = secrets.token_urlsafe(20)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///data/api.db'
+app.config['CORS_HEADERS'] = 'Content-Type'
+
+CSRFProtect(app)
+CORS(app)
 
 db = SQLAlchemy(app)
 socket = SocketIO(app)
+
 keys = []
-
-
-def timer_decorator(function):
-    @wraps(function)
-    def timer_checker(*args):
-        datetime_diff = session['datetime'] - datetime.datetime.now()
-        if datetime_diff.days >= 2:
-            formatter.drop_session(session['type'], session['KEY'])
-            del session['KEY']
-            del session['room']
-            del session['datetime']
-
-        return function(*args)
-
-    return timer_checker
+system_key = secrets.token_urlsafe(40)
 
 
 def session_decorator(function):
@@ -55,62 +47,22 @@ def session_decorator(function):
     return session_checker
 
 
-def error_decorator(function):
-    @wraps(function)
-    def error_handler(*args):
-        try:
-            response, status_code = function(*args)
-
-        except json.JSONDecodeError:
-            status_code = 415
-            response = {'result': False, 'message': 'Wrong message format'}
-
-        except ReferenceError:
-            status_code = 400
-            response = {'result': False, 'message': 'Data could not be found'}
-
-        except PermissionError:
-            status_code = 402
-            response = {'result': False, 'message': 'User do not have the privileges to do such operation'}
-
-        except ValueError:
-            status_code = 400
-            response = {'result': False, 'message': 'Invalid/Wrong information sent to request'}
-
-        except NotImplementedError:
-            status_code = 402
-            response = {'result': False, 'message': 'Endpoint can not send the information'}
-
-        except KeyError:
-            status_code = 400
-            response = {'result': False, 'message': 'Wrong keys sent'}
-
-        except TypeError:
-            status_code = 400
-            response = {'result': False, 'message': 'Wrong values type sent'}
-
-        except ConnectionRefusedError:
-            status_code = 400
-            response = {'result': False, 'message': 'User is not logged'}
-
-        except RuntimeError:
-            status_code = 500
-            response = {'result': False, 'message': 'Something went wrong with the application'}
-
-        except Exception as e:
-            status_code = 500
-            response = {'result': False, 'message': 'Unknown error -> ' + str(e)}
-
-        return jsonify(response), status_code
-
-    return error_handler
-
-
 @app.before_request
 def session_configuration():
     session.permanent = True
     session.modified = True
     app.permanent_session_lifetime = datetime.timedelta(days=365)
+    if 'datetime' in session:
+        datetime_diff = session['datetime'] - datetime.datetime.now()
+        if datetime_diff.days < 1:
+            session['datetime'] = datetime.datetime.now()
+        else:
+            handler.drop_session(session['type'], session['KEY'])
+            keys.remove(session['KEY'])
+            del session['KEY']
+            del session['room']
+            del session['datetime']
+            disconnect()
 
 
 @socket.on('connect')
@@ -127,53 +79,65 @@ def verify_connection():
     elif key not in keys:
         raise ConnectionRefusedError
 
+    if not session.get('room') or not session.get('login'):
+        del session['KEY']
+        del session['datetime']
+        raise ConnectionRefusedError
+
+    if session['login'] != 'resident' and session['login'] != 'employee':
+        raise ConnectionRefusedError
+
+    join_room(session['room'] + '_' + session['login'], request.sid)
+
 
 @app.route('/login/<login_type>', methods=['POST'])
-@error_decorator
 def login(login_type):
+    if session.get('KEY') is not None:
+        raise ConnectionRefusedError
+
     data = request.get_json()
     if login_type == 'resident':
-        response, room = formatter.login_resident(data)
-        join_room(room + '_resident', request.sid)
+        status, response, room = handler.login_resident(data, system_key)
 
     elif login_type == 'employee':
-        response, room = formatter.login_employee(data)
-        join_room(room + '_employee', request.sid)
+        status, response, room = handler.login_employee(data, system_key)
 
     else:
-        raise ValueError
+        status = 400
+        response = {'status': 400, 'result': False, 'event': 'Invalid login type', 'data': {}}
+        room = None
 
-    key = secrets.token_urlsafe(10)
+    if status == 200:
+        key = secrets.token_urlsafe(20)
 
-    keys.append(key)
-    response['key'] = key
-    session['KEY'] = key
-    session['room'] = room
-    session['datetime'] = datetime.datetime.now()
+        keys.append(key)
+        response['key'] = key
+        session['KEY'] = key
+        session['login'] = login_type
+        session['room'] = room
+        session['datetime'] = datetime.datetime.now()
 
-    return response, 201
+    return response, status
 
 
 @app.route('/register/<registration_type>')
-@error_decorator
 def register(registration_type):
     data = request.get_json()
     if registration_type == 'resident':
-        response, room = formatter.register_resident(data)
-        join_room(room + '_resident', request.sid)
+        status, response, room = handler.register_resident(data, system_key)
 
     elif registration_type == 'employee':
-        response, room = formatter.register_employee(data)
-        join_room(room + '_employee', request.sid)
+        status, response, room = handler.register_employee(data, system_key)
 
     else:
         raise ValueError
 
-    key = secrets.token_urlsafe(10)
+    key = secrets.token_urlsafe(20)
 
     keys.append(key)
     response['key'] = key
     session['KEY'] = key
+    session['login'] = registration_type
     session['room'] = room
     session['datetime'] = datetime.datetime.now()
 
@@ -182,59 +146,54 @@ def register(registration_type):
 
 @app.route('/employee', methods=['GET'])
 @session_decorator
-@error_decorator
 def employee():
     data = request.get_json()
-    response = formatter.get_employees(data)
+    response = handler.get_employees(data)
 
     return response, 200
 
 
 @app.route('/condominium', methods=['GET'])
 @session_decorator
-@error_decorator
 def condominium():
     data = request.get_json()
-    response = formatter.get_condominium(data)
+    response = handler.get_condominium(data)
 
     return response, 200
 
 
 @app.route('/tower', methods=['GET'])
 @session_decorator
-@error_decorator
 def tower():
     data = request.get_json()
-    response = formatter.get_towers(data)
+    response = handler.get_towers(data)
 
     return response, 200
 
 
 @app.route('/apartment', methods=['GET'])
 @session_decorator
-@error_decorator
 def apartment():
     data = request.get_json()
-    response = formatter.get_apartments(data)
+    response = handler.get_apartments(data)
 
     return response, 200
 
 
 @app.route('/event', methods=['GET', 'POST', 'DELETE'])
 @session_decorator
-@error_decorator
 def event():
     data = request.get_json()
     if request.method == 'GET':
-        response, room = formatter.get_events(data)
+        response, room = handler.get_events(data)
 
     elif request.method == 'POST':
-        response, room = formatter.register_event(data)
+        response, room = handler.register_event(data)
         emit('event', {'type': 'registration', 'data': data}, room=session['room'] + '_resident')
         emit('event', {'type': 'registration', 'data': data}, room=session['room'] + '_employee')
 
     else:
-        response, room = formatter.remove_event(data)
+        response, room = handler.remove_event(data)
         emit('event', {'type': 'deletion', 'data': data}, room=session['room'] + '_resident')
         emit('event', {'type': 'deletion', 'data': data}, room=session['room'] + '_employee')
 
@@ -243,19 +202,18 @@ def event():
 
 @app.route('/notification', methods=['GET', 'POST', 'DELETE'])
 @session_decorator
-@error_decorator
 def notification():
     data = request.get_json()
     if request.method == 'GET':
-        response = formatter.get_notifications(data)
+        response = handler.get_notifications(data)
 
     elif request.method == 'POST':
-        response = formatter.register_notification(data)
+        response = handler.register_notification(data)
         emit('notification', {'type': 'registration', 'data': data}, room=session['room'] + '_resident')
         emit('notification', {'type': 'registration', 'data': data}, room=session['room'] + '_employee')
 
     else:
-        response = formatter.remove_notification(data)
+        response = handler.remove_notification(data)
         emit('notification', {'type': 'deletion', 'data': data}, room=session['room'] + '_resident')
         emit('notification', {'type': 'deletion', 'data': data}, room=session['room'] + '_employee')
 
@@ -264,18 +222,17 @@ def notification():
 
 @app.route('/guest', methods=['GET', 'POST', 'DELETE'])
 @session_decorator
-@error_decorator
 def guest():
     data = request.get_json()
     if request.method == 'GET':
-        response = formatter.get_guests(data)
+        response = handler.get_guests(data)
 
     elif request.method == 'POST':
-        response = formatter.register_guest(data)
+        response = handler.register_guest(data)
         emit('guest', {'type': 'registration', 'data': data}, room=session['room'] + '_employee')
 
     else:
-        response = formatter.remove_guest(data)
+        response = handler.remove_guest(data)
         emit('guest', {'type': 'deletion', 'data': data}, room=session['room'] + '_employee')
 
     return response, 204
@@ -283,18 +240,17 @@ def guest():
 
 @app.route('/service', methods=['GET', 'POST', 'DELETE'])
 @session_decorator
-@error_decorator
 def service():
     data = request.get_json()
     if request.method == 'GET':
-        response = formatter.get_services(data)
+        response = handler.get_services(data)
 
     elif request.method == 'POST':
-        response = formatter.register_service(data)
+        response = handler.register_service(data)
         emit('service', {'type': 'registration', 'data': data}, room=session['room'] + '_employee')
 
     else:
-        response = formatter.remove_service(data)
+        response = handler.remove_service(data)
         emit('service', {'type': 'deletion', 'data': data}, room=session['room'] + '_employee')
 
     return response, 204
@@ -302,19 +258,18 @@ def service():
 
 @app.route('/rule', methods=['GET', 'POST', 'DELETE'])
 @session_decorator
-@error_decorator
 def rule():
     data = request.get_json()
     if request.method == 'GET':
-        response = formatter.get_rules(data)
+        response = handler.get_rules(data)
 
     elif request.method == 'POST':
-        response = formatter.register_rule(data)
+        response = handler.register_rule(data)
         emit('rule', {'type': 'registration', 'data': data}, room=session['room'] + '_resident')
         emit('rule', {'type': 'registration', 'data': data}, room=session['room'] + '_employee')
 
     else:
-        response = formatter.remove_rule(data)
+        response = handler.remove_rule(data)
         emit('rule', {'type': 'deletion', 'data': data}, room=session['room'] + '_resident')
         emit('rule', {'type': 'deletion', 'data': data}, room=session['room'] + '_employee')
 
@@ -322,8 +277,19 @@ def rule():
 
 
 if __name__ == '__main__':
-    import database_cleaner
-    from controller.formatter import JSONFormatter
+    from helpers.handler import Handler
 
-    formatter = JSONFormatter()
+    handler = Handler(system_key)
+
+    # formatter.permission_manager.add_session('sistema', 1)
+    #
+    # print('\nINSERTIONS\n')
+    # print(formatter.permission_manager.register_address_by_names('rua', 'bairro', 'cidade', 'estado', 'pais'))
+    # print(formatter.permission_manager.register_condominium('condominio', 23, None, 1))
+    # print(formatter.permission_manager.register_tower('t1', 1))
+    # print(formatter.permission_manager.register_apartment(100, 1))
+    #
+    # print(formatter.permission_manager.register_resident('username', 'password', 'cpf', 'name', '1999-06-11', None, 1, system_key))
+    # print(formatter.permission_manager.register_employee('username', 'password', 'cpf', 'name', '1999-06-11', None, 'role', 1, system_key))
+
     socket.run(app)

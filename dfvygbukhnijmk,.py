@@ -1,11 +1,9 @@
+from model.notification import Notification
+from model.employee import Employee
+from helpers.permission_manager import PermissionManager
+from setup import db
 import time
 import datetime
-from setup import db
-from model.notification import Notification
-from model.condominium import Condominium
-from model.resident import Resident
-from model.employee import Employee
-from controller.permission_manager import PermissionManager
 
 
 def performance_test():
