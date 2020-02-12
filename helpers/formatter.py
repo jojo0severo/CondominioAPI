@@ -1,4 +1,4 @@
-from helpers.permission_manager import PermissionManager
+import base64
 
 
 class JSONFormatter:
@@ -30,20 +30,22 @@ class JSONFormatter:
                 }
             }
 
-        return {'result': False, 'event': 'Resident could not be logged', 'data': {}}
+        return {'result': False, 'event': 'Employee could not be logged', 'data': {}}
 
     @staticmethod
     def format_resident(resident):
-        return {'CPF': resident.cpf,
+        return {'id': base64.urlsafe_b64encode(str(resident.id).encode('ascii')).decode('ascii'),
+                'CPF': resident.cpf,
                 'Name': resident.name,
-                'Birthday': resident.birthday,
+                'Birthday': resident.birthday.strftime("%Y-%m-%d"),
                 'PhotoLocation': resident.photo_location}
 
     @staticmethod
     def format_employee(employee):
-        return {'CPF': employee.cpf,
+        return {'id': base64.urlsafe_b64encode(str(employee.id).encode('ascii')).decode('ascii'),
+                'CPF': employee.cpf,
                 'Name': employee.name,
-                'Birthday': employee.birthday,
+                'Birthday': employee.birthday.strftime("%Y-%m-%d"),
                 'Role': employee.role,
                 'PhotoLocation': employee.photo_location}
 

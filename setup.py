@@ -1,21 +1,29 @@
+import json
 import secrets
 import datetime
 from functools import wraps
-from flask import Flask, request, session
+from flask import Flask, request, session, jsonify
 from flask_socketio import SocketIO, emit, join_room, disconnect
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
-from flask_wtf.csrf import CSRFProtect
+# from flask_session import Session
 
 
 app = Flask(__name__)
-app.config['JSON_SORT_KEYS'] = False
 app.config['SECRET_KEY'] = secrets.token_urlsafe(20)
+app.config['JSON_SORT_KEYS'] = False
+
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///data/api.db'
+
 app.config['CORS_HEADERS'] = 'Content-Type'
 
-CSRFProtect(app)
+app.config['SESSION_TYPE'] = 'filesystem'
+app.config['SESSION_FILE_THRESHOLD'] = 10000
+app.config['SESSION_COOKIE_HTTPONLY'] = False
+app.config['PERMANENT_SESSION_LIFETIME'] = datetime.timedelta(days=3)
+
+# Session(app)
 CORS(app)
 
 db = SQLAlchemy(app)
@@ -31,15 +39,19 @@ def session_decorator(function):
         session_key = session.get('KEY')
 
         if not session_key:
-            return {'message': 'User is not logged or session expired'}, 401
+            return {'status': 401, 'result': False, 'event': 'User is not logged or session expired', 'data': {}}, 401
 
-        key = request.get_json()['key']
+        data = request.get_json(force=True)
+        if 'key' not in [str(key).lower() for key in data.keys()]:
+            return {'status': 400, 'result': False, 'event': 'Missing information', 'data': {}}, 400
+
+        key = data['key']
 
         if key != session_key:
-            return {'message': 'Invalid key'}, 403
+            return {'status': 403, 'result': False, 'event': 'Invalid key', 'data': {}}, 403
 
         elif key not in keys:
-            return {'message': 'Key not recognized'}, 401
+            return {'status': 401, 'result': False, 'event': 'Key not recognized', 'data': {}}, 401
 
         else:
             return function(*args)
@@ -49,9 +61,8 @@ def session_decorator(function):
 
 @app.before_request
 def session_configuration():
-    session.permanent = True
     session.modified = True
-    app.permanent_session_lifetime = datetime.timedelta(days=365)
+    session.permanent = True
     if 'datetime' in session:
         datetime_diff = session['datetime'] - datetime.datetime.now()
         if datetime_diff.days < 1:
@@ -72,7 +83,7 @@ def verify_connection():
     if not session_key:
         raise ConnectionRefusedError
 
-    key = request.get_json()['key']
+    key = request.get_json(force=True)['key']
     if key != session_key:
         raise ConnectionRefusedError
 
@@ -93,70 +104,93 @@ def verify_connection():
 @app.route('/login/<login_type>', methods=['POST'])
 def login(login_type):
     if session.get('KEY') is not None:
-        raise ConnectionRefusedError
-
-    data = request.get_json()
-    if login_type == 'resident':
-        status, response, room = handler.login_resident(data, system_key)
-
-    elif login_type == 'employee':
-        status, response, room = handler.login_employee(data, system_key)
+        status = 409
+        response = {'status': 409, 'result': False, 'event': 'User already logged', 'data': {}}
 
     else:
-        status = 400
-        response = {'status': 400, 'result': False, 'event': 'Invalid login type', 'data': {}}
-        room = None
+        try:
+            data = request.get_json(force=True)
+            if login_type == 'resident':
+                status, response, room = handler.login_resident(data, system_key)
+    
+            elif login_type == 'employee':
+                status, response, room = handler.login_employee(data, system_key)
+    
+            else:
+                status = 400
+                response = {'status': 400, 'result': False, 'event': 'Invalid login type', 'data': {}}
+    
+            if status == 200:
+                key = secrets.token_urlsafe(20)
+    
+                keys.append(key)
+                response['key'] = key
+                session['KEY'] = key
+                session['login'] = login_type
+                session['room'] = room
+                session['datetime'] = datetime.datetime.now()
+                
+        except json.JSONDecodeError:
+            status = 422
+            response = {'status': 422, 'result': False, 'event': 'Unable to process the data, not JSON formatted', 'data': {}}
 
-    if status == 200:
-        key = secrets.token_urlsafe(20)
-
-        keys.append(key)
-        response['key'] = key
-        session['KEY'] = key
-        session['login'] = login_type
-        session['room'] = room
-        session['datetime'] = datetime.datetime.now()
-
-    return response, status
+    return jsonify(response), status
 
 
 @app.route('/register/<registration_type>')
 def register(registration_type):
-    data = request.get_json()
-    if registration_type == 'resident':
-        status, response, room = handler.register_resident(data, system_key)
-
-    elif registration_type == 'employee':
-        status, response, room = handler.register_employee(data, system_key)
+    if session.get('KEY') is not None:
+        status = 409
+        response = {'status': 409, 'result': False, 'event': 'User already logged', 'data': {}}
 
     else:
-        raise ValueError
+        try:
+            data = request.get_json(force=True)
+            if str(registration_type).lower() == 'resident':
+                status, response, room = handler.register_resident(data, system_key)
 
-    key = secrets.token_urlsafe(20)
+            elif str(registration_type).lower() == 'employee':
+                status, response, room = handler.register_employee(data, system_key)
 
-    keys.append(key)
-    response['key'] = key
-    session['KEY'] = key
-    session['login'] = registration_type
-    session['room'] = room
-    session['datetime'] = datetime.datetime.now()
+            else:
+                status = 400
+                response = {'status': 400, 'result': False, 'event': 'Invalid registration type', 'data': {}}
 
-    return response, 201
+            if status == 201:
+                key = secrets.token_urlsafe(20)
+
+                keys.append(key)
+                response['key'] = key
+                session['KEY'] = key
+                session['login'] = registration_type
+                session['room'] = room
+                session['datetime'] = datetime.datetime.now()
+
+        except json.JSONDecodeError:
+            status = 422
+            response = {'status': 422, 'result': False, 'event': 'Unable to process the data, not JSON formatted', 'data': {}}
+
+    return jsonify(response), status
 
 
 @app.route('/employee', methods=['GET'])
 @session_decorator
 def employee():
-    data = request.get_json()
-    response = handler.get_employees(data)
+    try:
+        data = request.get_json(force=True)
+        status, response = handler.get_employees(data, system_key, session['KEY'])
 
-    return response, 200
+    except json.JSONDecodeError:
+        status = 422
+        response = {'status': 422, 'result': False, 'event': 'Unable to process the data, not JSON formatted', 'data': {}}
+
+    return response, status
 
 
 @app.route('/condominium', methods=['GET'])
 @session_decorator
 def condominium():
-    data = request.get_json()
+    data = request.get_json(force=True)
     response = handler.get_condominium(data)
 
     return response, 200
@@ -165,7 +199,7 @@ def condominium():
 @app.route('/tower', methods=['GET'])
 @session_decorator
 def tower():
-    data = request.get_json()
+    data = request.get_json(force=True)
     response = handler.get_towers(data)
 
     return response, 200
@@ -174,7 +208,7 @@ def tower():
 @app.route('/apartment', methods=['GET'])
 @session_decorator
 def apartment():
-    data = request.get_json()
+    data = request.get_json(force=True)
     response = handler.get_apartments(data)
 
     return response, 200
@@ -183,7 +217,7 @@ def apartment():
 @app.route('/event', methods=['GET', 'POST', 'DELETE'])
 @session_decorator
 def event():
-    data = request.get_json()
+    data = request.get_json(force=True)
     if request.method == 'GET':
         response, room = handler.get_events(data)
 
@@ -203,7 +237,7 @@ def event():
 @app.route('/notification', methods=['GET', 'POST', 'DELETE'])
 @session_decorator
 def notification():
-    data = request.get_json()
+    data = request.get_json(force=True)
     if request.method == 'GET':
         response = handler.get_notifications(data)
 
@@ -223,7 +257,7 @@ def notification():
 @app.route('/guest', methods=['GET', 'POST', 'DELETE'])
 @session_decorator
 def guest():
-    data = request.get_json()
+    data = request.get_json(force=True)
     if request.method == 'GET':
         response = handler.get_guests(data)
 
@@ -241,7 +275,7 @@ def guest():
 @app.route('/service', methods=['GET', 'POST', 'DELETE'])
 @session_decorator
 def service():
-    data = request.get_json()
+    data = request.get_json(force=True)
     if request.method == 'GET':
         response = handler.get_services(data)
 
@@ -259,7 +293,7 @@ def service():
 @app.route('/rule', methods=['GET', 'POST', 'DELETE'])
 @session_decorator
 def rule():
-    data = request.get_json()
+    data = request.get_json(force=True)
     if request.method == 'GET':
         response = handler.get_rules(data)
 
@@ -281,15 +315,16 @@ if __name__ == '__main__':
 
     handler = Handler(system_key)
 
-    # formatter.permission_manager.add_session('sistema', 1)
+    # import database_cleaner
+    # handler.permission_manager.add_session('sistema', 1)
     #
     # print('\nINSERTIONS\n')
-    # print(formatter.permission_manager.register_address_by_names('rua', 'bairro', 'cidade', 'estado', 'pais'))
-    # print(formatter.permission_manager.register_condominium('condominio', 23, None, 1))
-    # print(formatter.permission_manager.register_tower('t1', 1))
-    # print(formatter.permission_manager.register_apartment(100, 1))
+    # print(handler.permission_manager.address_controller.register_address_by_names('rua', 'bairro', 'cidade', 'estado', 'pais'))
+    # print(handler.permission_manager.condominium_controller.register_condominium('condominio', 23, None, 1))
+    # print(handler.permission_manager.condominium_controller.register_tower('t1', 1))
+    # print(handler.permission_manager.condominium_controller.register_apartment(100, 1))
     #
-    # print(formatter.permission_manager.register_resident('username', 'password', 'cpf', 'name', '1999-06-11', None, 1, system_key))
-    # print(formatter.permission_manager.register_employee('username', 'password', 'cpf', 'name', '1999-06-11', None, 'role', 1, system_key))
+    # print(handler.permission_manager.register_resident('username', 'password', 'cpf', 'name', '1999-06-11', None, 1, system_key))
+    # print(handler.permission_manager.register_employee('username', 'password', 'cpf', 'name', '1999-06-11', None, 'role', 1, system_key))
 
     socket.run(app)
