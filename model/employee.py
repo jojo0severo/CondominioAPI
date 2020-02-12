@@ -5,7 +5,6 @@ class Employee(db.Model):
     __tablename__ = 'employee'
     __table_args__ = (
         db.UniqueConstraint('cpf', 'role', 'condominium_id'),
-        db.UniqueConstraint('photo_location'),
         db.Index('employee_idx', 'cpf', 'role', 'condominium_id')
     )
 

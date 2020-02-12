@@ -5,7 +5,6 @@ class Resident(db.Model):
     __tablename__ = 'resident'
     __table_args__ = (
         db.UniqueConstraint('cpf', 'apartment_id'),
-        db.UniqueConstraint('photo_location'),
         db.Index('resident_idx', 'cpf', 'apartment_id')
     )
 

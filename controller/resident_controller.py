@@ -2,13 +2,18 @@ from model.resident import Resident
 from model.resident_user import ResidentUser
 from setup import db
 from sqlalchemy import exc, and_
+import bcrypt
 import datetime
 
 
 class ResidentController:
     def do_login(self, username, password):
         user = ResidentUser.query.get(username)
-        return user is not None and user.password == password, user.resident
+        if user is not None:
+            if bcrypt.checkpw(password.encode('utf-8'), user.password):
+                return True, user.resident
+
+        return False, None
 
     def get_resident_by_id(self, resident_id):
         resident = Resident.query.get(resident_id)
@@ -31,7 +36,7 @@ class ResidentController:
         try:
             birthday = datetime.datetime.strptime(birthday, '%Y-%m-%d')
             resident = Resident(cpf=cpf, name=name, birthday=birthday, photo_location=photo_location, apartment_id=apartment_id)
-            resident.user = ResidentUser(username=username, password=password)
+            resident.user = ResidentUser(username=username, password=bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()))
 
             db.session.add(resident)
             db.session.commit()
@@ -47,14 +52,14 @@ class ResidentController:
         if not resident_user:
             raise ReferenceError
 
-        if resident_user.password != password:
+        if not bcrypt.checkpw(password.encode('utf-8'), resident_user.password):
             raise PermissionError
 
         resident = Resident.query.filter(and_(Resident.cpf == cpf, Resident.apartment_id == apartment_id)).first()
         if not resident:
             raise ReferenceError
 
-        if resident.name != name or resident.birthday != birthday:
+        if resident.name != name or resident.birthday.strftime("%Y-%m-%d") != birthday:
             raise PermissionError
 
         db.session.delete(resident_user)
