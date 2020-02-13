@@ -1,56 +1,46 @@
 import base64
+import bcrypt
 from helpers.permission_manager import PermissionManager
 from helpers.formatter import JSONFormatter
-from helpers.error_decorators import *
+from helpers.general_error_decorators import *
 
 
 class Handler:
-    def __init__(self, system_key):
+    def __init__(self):
         self.formatter = JSONFormatter()
-        self.permission_manager = PermissionManager(system_key)
+        self.permission_manager = PermissionManager()
 
-    @permission_error_decorator
+    @runtime_error_decorator
+    def register_key(self, key_type, key):
+        self.permission_manager.register_key(key_type, key)
+
+    @runtime_error_decorator
     @key_error_decorator
-    def login_resident(self, data, system_key):
+    def login_resident(self, data):
         username = data['username']
         password = data['password']
 
-        response = self.formatter.format_resident_connection(*self.permission_manager.login_resident(username, password, system_key))
-        if response['result']:
-            status = 200
-            room = response['data']['condominium']['Name']
-        else:
-            status = 400
-            room = None
+        result, info = self.permission_manager.login_resident(username, password)
+        response, room = self.formatter.format_resident_connection(result, info, {'success': 200, 'failure': 400, 'empty': 404})
 
-        response['status'] = status
+        return response['status'], response, room
 
-        return status, response, room
-
-    @permission_error_decorator
+    @runtime_error_decorator
     @key_error_decorator
-    def login_employee(self, data, system_key):
+    def login_employee(self, data):
         username = data['username']
         password = data['password']
 
-        result, info = self.permission_manager.login_employee(username, password, system_key)
-        response = self.formatter.format_employee_connection(result, info)
-        if response['result']:
-            status = 200
-            room = response['data']['condominium']['Name']
-        else:
-            status = 409
-            room = None
+        result, info = self.permission_manager.login_employee(username, password)
+        response, room = self.formatter.format_employee_connection(result, info, {'success': 200, 'failure': 400, 'empty': 404})
 
-        response['status'] = status
+        return response['status'], response, room
 
-        return status, response, room
-
-    @permission_error_decorator
+    @runtime_error_decorator
     @key_error_decorator
-    def register_resident(self, data, system_key):
+    def register_resident(self, data):
         username = data['username']
-        password = data['password']
+        password = bcrypt.hashpw(data['password'], bcrypt.gensalt())
         cpf = data['cpf']
         name = data['name']
         birthday = data['birthday']
@@ -61,25 +51,16 @@ class Handler:
         else:
             photo_location = data['photo_location']
 
-        result, info = self.permission_manager.register_resident(username, password, cpf, name, birthday, photo_location, apartment_id, system_key)
-        response = self.formatter.format_resident_connection(result, info)
+        result, info = self.permission_manager.register_resident(username, password, cpf, name, birthday, photo_location, apartment_id)
+        response, room = self.formatter.format_resident_connection(result, info, {'success': 201, 'failure': 409, 'empty': 404})
 
-        if response['result']:
-            status = 201
-            room = response['data']['condominium']['Name']
-        else:
-            status = 409
-            room = None
+        return response['status'], response, room
 
-        response['status'] = status
-
-        return status, response, room
-
-    @permission_error_decorator
+    @runtime_error_decorator
     @key_error_decorator
-    def register_employee(self, data, system_key):
+    def register_employee(self, data):
         username = data['username']
-        password = data['password']
+        password = bcrypt.hashpw(data['password'], bcrypt.gensalt())
         cpf = data['cpf']
         name = data['name']
         birthday = data['birthday']
@@ -91,22 +72,73 @@ class Handler:
         else:
             photo_location = data['photo_location']
 
-        result, info = self.permission_manager.register_employee(username, password, cpf, name, birthday, photo_location, role, condominium_id, system_key)
-        response = self.formatter.format_employee_connection(result, info)
-        if response['result']:
-            status = 201
-            room = response['data']['condominium']['Name']
+        result, info = self.permission_manager.register_employee(username, password, cpf, name, birthday, photo_location, role, condominium_id)
+        response, room = self.formatter.format_employee_connection(result, info, {'success': 201, 'failure': 409, 'empty': 404})
+
+        return response['status'], response, room
+
+    @runtime_error_decorator
+    @key_error_decorator
+    def get_employees(self, data, user_key):
+        user_id = int(base64.urlsafe_b64decode(data['user_id']).decode('ascii'))
+
+        result, info = self.permission_manager.get_employees(user_id, user_key)
+        response = self.formatter.format_employees(result, info, {'success': 200, 'failure': 403, 'empty': 404})
+
+        return response['status'], response
+
+    @runtime_error_decorator
+    @key_error_decorator
+    def get_residents(self, data, user_key):
+        user_id = int(base64.urlsafe_b64decode(data['user_id']).decode('ascii'))
+        apartment_number = data['apartment_number']
+
+        result, info = self.permission_manager.get_residents(user_id, apartment_number, user_key)
+        response = self.formatter.format_residents(result, info, {'success': 200, 'failure': 403, 'empty': 404})
+
+        return response['status'], response
+
+    @runtime_error_decorator
+    @key_error_decorator
+    def get_events(self, data, user_type, search_type, user_key):
+        if user_type not in ['employee', 'resident']:
+            raise ValueError(f'user_type: "{user_type}"')
+
+        if search_type == 'all':
+            user_id = int(base64.urlsafe_b64decode(data['user_id']).decode('ascii'))
+            result, info = self.permission_manager.get_condominium_events(user_id)
+
+        elif search_type in ['mine', 'apartment']:
+            user_id = int(base64.urlsafe_b64decode(data['user_id']).decode('ascii'))
+            if 'apartment_number' in data:
+                apartment_number = data['apartment_number']
+            else:
+                apartment_number = None
+
+            result, info = self.permission_manager.get_apartment_events(user_id, apartment_number, user_key)
+
         else:
-            status = 400
-            room = None
+            raise ValueError(f'search_type: "{search_type}"')
 
-        response['status'] = status
+        response = self.formatter.format_events(result, info, {'success': 200, 'failure': 403, 'empty': 404})
+        return response['status'], response
 
-        return status, response, room
+    @runtime_error_decorator
+    def drop_session(self, session_key):
+        return self.permission_manager.drop_session(session_key)
 
-    def get_employees(self, data, system_key, user_key):
-        user_id = base64.urlsafe_b64decode(data['id'])
-        return 500, {}
 
-    def drop_session(self, system_key, session_key):
-        return self.permission_manager.drop_session(system_key, session_key)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
