@@ -5,11 +5,7 @@ from sqlalchemy import exc
 
 class RuleController:
     def get_rule_by_id(self, rule_id):
-        rule = Rule.query.get(rule_id)
-        if not rule:
-            raise ReferenceError
-
-        return rule
+        return Rule.query.get(rule_id)
 
     def register_rule(self, text, condominium_id):
         try:
@@ -23,10 +19,13 @@ class RuleController:
             db.session.rollback()
             return None
 
-    def remove_rule(self, rule_id):
-        rule = Rule.query.get(rule_id)
-        if not rule:
-            raise ReferenceError
+    def remove_rule(self, rule):
+        try:
+            db.session.delete(rule)
+            db.session.commit()
 
-        db.session.delete(rule)
-        db.session.commit()
+            return True
+
+        except exc.IntegrityError:
+            db.session.rollback()
+            return False

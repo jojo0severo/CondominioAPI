@@ -11,6 +11,7 @@ class Guest(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50), nullable=False)
     arrival = db.Column(db.DateTime, nullable=False)
+    active = db.Column(db.SmallInteger, default=1)
     apartment_id = db.Column(db.Integer, db.ForeignKey('apartment.id', ondelete='CASCADE'), nullable=False)
 
     apartment = db.relationship('Apartment', backref=db.backref('guests', lazy=True, cascade='all, delete'), lazy=True)

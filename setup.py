@@ -2,15 +2,17 @@ import json
 import secrets
 import datetime
 from functools import wraps
-from flask import Flask, request, session, jsonify
+from flask import Flask, request, session, jsonify, abort, make_response
 from flask_socketio import SocketIO, emit, join_room, disconnect
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
+from flask_limiter import Limiter, RateLimitExceeded
+from flask_limiter.util import get_remote_address
 # from flask_session import Session
 
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = secrets.token_urlsafe(20)
+app.config['SECRET_KEY'] = secrets.token_urlsafe(30)
 app.config['JSON_SORT_KEYS'] = False
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -21,16 +23,18 @@ app.config['CORS_HEADERS'] = 'Content-Type'
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['SESSION_FILE_THRESHOLD'] = 10000
 app.config['SESSION_COOKIE_HTTPONLY'] = False
-app.config['PERMANENT_SESSION_LIFETIME'] = datetime.timedelta(days=3)
+# app.config['SESSION_COOKIE_SECURE'] = True
+app.config['PERMANENT_SESSION_LIFETIME'] = datetime.timedelta(days=2)
 
 # Session(app)
 CORS(app)
+limiter = Limiter(app, key_func=get_remote_address, default_limits=['1000/day', '400/hour', '30/minute', '2/second'])
 
 db = SQLAlchemy(app)
 socket = SocketIO(app)
 
-keys = []
-system_key = secrets.token_urlsafe(40)
+keys = set()
+blocked_sessions = set()
 
 
 def session_decorator(function):
@@ -40,6 +44,10 @@ def session_decorator(function):
 
         if not session_key:
             return {'status': 401, 'result': False, 'event': 'User is not logged or session expired', 'data': {}}, 401
+
+        if session_key not in keys:
+            blocked_sessions.add(session_key)
+            abort(make_response(jsonify({'status': 401, 'result': False, 'event': 'User blocked due to attempt to fake identity'}), 401))
 
         data = request.get_json(force=True)
         if 'key' not in [str(key).lower() for key in data.keys()]:
@@ -57,23 +65,6 @@ def session_decorator(function):
             return function(*args)
 
     return session_checker
-
-
-@app.before_request
-def session_configuration():
-    session.modified = True
-    session.permanent = True
-    if 'datetime' in session:
-        datetime_diff = session['datetime'] - datetime.datetime.now()
-        if datetime_diff.days < 1:
-            session['datetime'] = datetime.datetime.now()
-        else:
-            handler.drop_session(session['type'], session['KEY'])
-            keys.remove(session['KEY'])
-            del session['KEY']
-            del session['room']
-            del session['datetime']
-            disconnect()
 
 
 @socket.on('connect')
@@ -101,6 +92,26 @@ def verify_connection():
     join_room(session['room'] + '_' + session['login'], request.sid)
 
 
+@app.before_request
+def session_configuration():
+    if 'KEY' in session and session['KEY'] in blocked_sessions:
+        abort(make_response(jsonify({'status': 401, 'result': False, 'event': 'User blocked due to attempt to fake identity'}), 401))
+
+    session.modified = True
+
+    if 'datetime' in session:
+        datetime_diff = session['datetime'] - datetime.datetime.now()
+        if datetime_diff.days < 1:
+            session['datetime'] = datetime.datetime.now()
+        else:
+            handler.drop_session(session['KEY'])
+            keys.remove(session['KEY'])
+            del session['KEY']
+            del session['room']
+            del session['datetime']
+            disconnect()
+
+
 @app.route('/login/<login_type>', methods=['POST'])
 def login(login_type):
     if session.get('KEY') is not None:
@@ -111,10 +122,10 @@ def login(login_type):
         try:
             data = request.get_json(force=True)
             if login_type == 'resident':
-                status, response, room = handler.login_resident(data, system_key)
+                status, response, room = handler.login_resident(data)
     
             elif login_type == 'employee':
-                status, response, room = handler.login_employee(data, system_key)
+                status, response, room = handler.login_employee(data)
     
             else:
                 status = 400
@@ -123,12 +134,14 @@ def login(login_type):
             if status == 200:
                 key = secrets.token_urlsafe(20)
     
-                keys.append(key)
+                keys.add(key)
                 response['key'] = key
                 session['KEY'] = key
                 session['login'] = login_type
                 session['room'] = room
                 session['datetime'] = datetime.datetime.now()
+
+                handler.register_key(login_type, key)
                 
         except json.JSONDecodeError:
             status = 422
@@ -147,10 +160,10 @@ def register(registration_type):
         try:
             data = request.get_json(force=True)
             if str(registration_type).lower() == 'resident':
-                status, response, room = handler.register_resident(data, system_key)
+                status, response, room = handler.register_resident(data)
 
             elif str(registration_type).lower() == 'employee':
-                status, response, room = handler.register_employee(data, system_key)
+                status, response, room = handler.register_employee(data)
 
             else:
                 status = 400
@@ -159,12 +172,14 @@ def register(registration_type):
             if status == 201:
                 key = secrets.token_urlsafe(20)
 
-                keys.append(key)
+                keys.add(key)
                 response['key'] = key
                 session['KEY'] = key
                 session['login'] = registration_type
                 session['room'] = room
                 session['datetime'] = datetime.datetime.now()
+
+                handler.register_key(registration_type, key)
 
         except json.JSONDecodeError:
             status = 422
@@ -173,12 +188,12 @@ def register(registration_type):
     return jsonify(response), status
 
 
-@app.route('/employee', methods=['GET'])
+@app.route('/employees', methods=['GET'])
 @session_decorator
-def employee():
+def employees():
     try:
         data = request.get_json(force=True)
-        status, response = handler.get_employees(data, system_key, session['KEY'])
+        status, response = handler.get_employees(data, session['KEY'])
 
     except json.JSONDecodeError:
         status = 422
@@ -187,51 +202,43 @@ def employee():
     return response, status
 
 
-@app.route('/condominium', methods=['GET'])
+@app.route('/residents', methods=['GET'])
 @session_decorator
-def condominium():
-    data = request.get_json(force=True)
-    response = handler.get_condominium(data)
+def residents():
+    try:
+        data = request.get_json(force=True)
+        status, response = handler.get_residents(data, session['KEY'])
 
-    return response, 200
+    except json.JSONDecodeError:
+        status = 422
+        response = {'status': 422, 'result': False, 'event': 'Unable to process the data, not JSON formatted', 'data': {}}
+
+    return response, status
 
 
-@app.route('/tower', methods=['GET'])
+@app.route('/event/<user_type>/<search_type>', methods=['GET', 'POST', 'DELETE'])
 @session_decorator
-def tower():
-    data = request.get_json(force=True)
-    response = handler.get_towers(data)
+def event(user_type, search_type):
+    try:
+        data = request.get_json(force=True)
+        if request.method == 'GET':
+            status, response = handler.get_events(data, user_type, search_type, session['KEY'])
 
-    return response, 200
+        elif request.method == 'POST':
+            status, response = handler.register_event(data)
+            emit('event', {'type': 'registration', 'data': data}, room=session['room'] + '_resident')
+            emit('event', {'type': 'registration', 'data': data}, room=session['room'] + '_employee')
 
+        else:
+            status, response = handler.remove_event(data)
+            emit('event', {'type': 'deletion', 'data': data}, room=session['room'] + '_resident')
+            emit('event', {'type': 'deletion', 'data': data}, room=session['room'] + '_employee')
 
-@app.route('/apartment', methods=['GET'])
-@session_decorator
-def apartment():
-    data = request.get_json(force=True)
-    response = handler.get_apartments(data)
+    except json.JSONDecodeError:
+        status = 422
+        response = {'status': 422, 'result': False, 'event': 'Unable to process the data, not JSON formatted', 'data': {}}
 
-    return response, 200
-
-
-@app.route('/event', methods=['GET', 'POST', 'DELETE'])
-@session_decorator
-def event():
-    data = request.get_json(force=True)
-    if request.method == 'GET':
-        response, room = handler.get_events(data)
-
-    elif request.method == 'POST':
-        response, room = handler.register_event(data)
-        emit('event', {'type': 'registration', 'data': data}, room=session['room'] + '_resident')
-        emit('event', {'type': 'registration', 'data': data}, room=session['room'] + '_employee')
-
-    else:
-        response, room = handler.remove_event(data)
-        emit('event', {'type': 'deletion', 'data': data}, room=session['room'] + '_resident')
-        emit('event', {'type': 'deletion', 'data': data}, room=session['room'] + '_employee')
-
-    return response, 204
+    return response, status
 
 
 @app.route('/notification', methods=['GET', 'POST', 'DELETE'])
@@ -310,13 +317,18 @@ def rule():
     return response, 204
 
 
+@app.errorhandler(429)
+def handle_too_many_requests(e):
+    return jsonify({'status': 429, 'result': False, 'event': f'Too many requests made: {e.description}', 'data': {}})
+
+
 if __name__ == '__main__':
     from helpers.handler import Handler
 
-    handler = Handler(system_key)
+    handler = Handler()
 
     # import database_cleaner
-    # handler.permission_manager.add_session('sistema', 1)
+    # import bcrypt
     #
     # print('\nINSERTIONS\n')
     # print(handler.permission_manager.address_controller.register_address_by_names('rua', 'bairro', 'cidade', 'estado', 'pais'))
@@ -324,7 +336,7 @@ if __name__ == '__main__':
     # print(handler.permission_manager.condominium_controller.register_tower('t1', 1))
     # print(handler.permission_manager.condominium_controller.register_apartment(100, 1))
     #
-    # print(handler.permission_manager.register_resident('username', 'password', 'cpf', 'name', '1999-06-11', None, 1, system_key))
-    # print(handler.permission_manager.register_employee('username', 'password', 'cpf', 'name', '1999-06-11', None, 'role', 1, system_key))
+    # print(handler.permission_manager.register_employee('employee', bcrypt.hashpw('password'.encode('utf-8'), bcrypt.gensalt()), 'cpf', 'name', '1999-06-11', None, 'role', 1))
+    # print(handler.permission_manager.register_resident('resident', bcrypt.hashpw('password'.encode('utf-8'), bcrypt.gensalt()), 'cpf', 'name', '1999-06-11', None, 1))
 
     socket.run(app)

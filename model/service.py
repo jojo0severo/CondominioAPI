@@ -12,6 +12,7 @@ class Service(db.Model):
     name = db.Column(db.String(30), nullable=False)
     employee = db.Column(db.String(50), nullable=True)
     arrival = db.Column(db.DateTime, nullable=False)
+    active = db.Column(db.SmallInteger, default=1)
     apartment_id = db.Column(db.Integer, db.ForeignKey('apartment.id', ondelete='CASCADE'), nullable=False)
 
     apartment = db.relationship('Apartment', backref=db.backref('services', lazy=True, cascade='all, delete'), lazy=True)

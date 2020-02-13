@@ -13,31 +13,22 @@ def clear_old_guests():
         time.sleep(30 * 60)
 
     while True:
-        Guest.query.filter(Guest.arrival > datetime.datetime.today()).delete()
+        Guest.query.filter(Guest.arrival > datetime.datetime.today()).update({Guest.active: 0})
         db.session.commit()
         time.sleep(3600 * 24)
 
 
 class GuestController:
     def get_guest_by_id(self, guest_id):
-        guest = Guest.query.get(guest_id)
-        if not guest:
-            raise ReferenceError
-
-        return guest
+        return Guest.query.filter(and_(Guest.id == guest_id, Guest.active == 1))
 
     def get_guests_by_date(self, condominium_id, start_datetime, end_datetime):
-        guests = Condominium.query.filter_by(id=condominium_id) \
+        return Condominium.query.filter_by(id=condominium_id) \
             .join(Tower) \
             .join(Apartment) \
             .join(Guest) \
-            .filter(and_(Guest.arrival >= start_datetime, Guest.arrival <= end_datetime)) \
+            .filter(and_(Guest.arrival >= start_datetime, Guest.arrival <= end_datetime, Guest.active == 1)) \
             .with_entities(Guest.id, Guest.name, Guest.arrival, Guest.apartment_id).all()
-
-        if not guests:
-            raise ReferenceError
-
-        return guests
 
     def register_guest(self, name, arrival, apartment_id):
         try:
@@ -52,10 +43,13 @@ class GuestController:
             db.session.rollback()
             return None
 
-    def remove_guest(self, guest_id):
-        guest = Guest.query.get(guest_id)
-        if not guest:
-            raise ReferenceError
+    def remove_guest(self, guest):
+        try:
+            db.session.delete(guest)
+            db.session.commit()
 
-        db.session.delete(guest)
-        db.session.commit()
+            return True
+
+        except exc.IntegrityError:
+            db.session.rollback()
+            return False

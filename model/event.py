@@ -11,6 +11,7 @@ class Event(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     start_datetime = db.Column(db.DateTime, nullable=False)
     end_datetime = db.Column(db.DateTime, nullable=False)
+    active = db.Column(db.SmallInteger, default=1)
     event_type_id = db.Column(db.Integer, db.ForeignKey('eventtype.id', ondelete='CASCADE'), nullable=False)
     apartment_id = db.Column(db.Integer, db.ForeignKey('apartment.id', ondelete='CASCADE'), nullable=False)
 

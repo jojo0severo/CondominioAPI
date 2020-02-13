@@ -9,37 +9,20 @@ from sqlalchemy import exc, and_
 class AddressController:
     def get_country_states(self, country_identifier):
         if isinstance(country_identifier, str):
-            country = Country.query.filter_by(name=country_identifier).first()
+            return Country.query.filter_by(name=country_identifier).first().states
         elif isinstance(country_identifier, int):
-            country = Country.query.get(country_identifier)
+            return Country.query.get(country_identifier).states
         else:
-            raise TypeError
-
-        if country is None:
-            raise ReferenceError
-
-        return country.states
+            raise ValueError(f'country_identifier: {type(country_identifier)}')
 
     def get_state_cities(self, state_id):
-        state = State.query.get(state_id)
-        if state is None:
-            raise ReferenceError
-
-        return state.cities
+        return State.query.get(state_id)
 
     def get_city_addresses(self, city_id):
-        city = City.query.get(city_id)
-        if city is None:
-            raise ReferenceError
-
-        return city.addresses
+        return City.query.get(city_id)
 
     def get_address_by_id(self, address_id):
-        address = Address.query.filter_by(id=address_id).join(City).join(State).join(Country).first()
-        if address is None:
-            raise ReferenceError
-
-        return address
+        return Address.query.filter_by(id=address_id).join(City).join(State).join(Country).first()
 
     def register_address_by_names(self, street_name, neighbourhood, city_name, state_name, country_name):
         try:
@@ -80,10 +63,13 @@ class AddressController:
             db.session.rollback()
             return None
 
-    def remove_address_by_id(self, address_id):
-        address = Address.query.get(address_id)
-        if address is None:
-            raise ReferenceError
+    def remove_address_by_id(self, address):
+        try:
+            db.session.delete(address)
+            db.session.commit()
 
-        db.session.delete(address)
-        db.session.commit()
+            return True
+
+        except exc.IntegrityError:
+            db.session.rollback()
+            return False
