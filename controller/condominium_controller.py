@@ -1,6 +1,7 @@
 from model.condominium import Condominium
 from model.tower import Tower
 from model.apartment import Apartment
+from model.resident import Resident
 from setup import db
 from sqlalchemy import exc
 
@@ -16,7 +17,10 @@ class CondominiumController:
         return Apartment.query.get(apartment_id)
 
     def get_apartment_residents_by_condominium_id_and_apt_number(self, condominium_id, apartment_number):
-        return Apartment.query.filter(Apartment.apt_number == apartment_number).join(Tower).join(Condominium).filter(Condominium.id == condominium_id).first().residents
+        return Resident.query.join(Apartment).filter(Apartment.apt_number == apartment_number).join(Tower).join(Condominium).filter(Condominium.id == condominium_id).all()
+
+    def get_resident_login_info(self, apartment_id):
+        return Resident.query.join(Apartment).filter_by(id=apartment_id).join(Tower).join(Condominium).all()
 
     def register_condominium(self, name, street_number, photo_location, address_id):
         try:

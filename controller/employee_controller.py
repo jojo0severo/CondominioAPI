@@ -3,7 +3,6 @@ from model.username import Username
 from model.employee_user import EmployeeUser
 from setup import db
 from sqlalchemy import exc, and_
-import bcrypt
 import datetime
 
 
@@ -20,10 +19,10 @@ class EmployeeController:
     def get_employees_by_condominium_id(self, condominium_id):
         return Employee.query.filter_by(condominium_id=condominium_id).all()
 
-    def register_employee(self, username, hash_password, cpf, name, birthday, photo_location, role, condominium_id):
+    def register_employee(self, employee_type, username, hash_password, cpf, name, birthday, photo_location, role, condominium_id):
         try:
             birthday = datetime.datetime.strptime(birthday, '%Y-%m-%d')
-            employee = Employee(cpf=cpf, name=name, birthday=birthday, photo_location=photo_location, role=role, condominium_id=condominium_id)
+            employee = Employee(type=employee_type, cpf=cpf, name=name, birthday=birthday, photo_location=photo_location, role=role, condominium_id=condominium_id)
             employee_user = EmployeeUser(password=hash_password)
             employee_user._username = Username(username=username)
             employee.user = employee_user
