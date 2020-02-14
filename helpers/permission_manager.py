@@ -1,3 +1,4 @@
+from model.super_user import SuperUser
 from controller.address_controller import AddressController
 from controller.condominium_controller import CondominiumController
 from controller.resident_controller import ResidentController
@@ -39,6 +40,16 @@ class PermissionManager:
 
         else:
             raise RuntimeError
+
+    def login_super_user(self, username, password):
+        super_user = SuperUser.query.get(username)
+        if super_user is None:
+            return False, 'User not found', None
+
+        if bcrypt.checkpw(password.encode('utf-8'), super_user.password):
+            return True, super_user, super_user.username
+
+        return False, 'User passowrd does not match', None
 
     def login_resident(self, username, password):
         user = self.resident_controller.do_login(username)

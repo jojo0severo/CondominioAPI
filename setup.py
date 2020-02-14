@@ -36,6 +36,8 @@ socket = SocketIO(app)
 keys = set()
 blocked_sessions = set()
 
+super_user_url = secrets.token_urlsafe(36)
+
 
 def session_decorator(function):
     @wraps(function)
@@ -112,6 +114,36 @@ def session_configuration():
             del session['DATETIME']
 
             disconnect()
+
+
+@app.route(f'/{super_user_url}', methods=['POST'])
+def login_super_user():
+    if session.get('KEY') is not None:
+        status = 409
+        response = {'status': 409, 'result': False, 'event': 'User already logged', 'data': {}}
+
+    else:
+        try:
+            data = request.get_json(force=True)
+            status, response, id_ = handler.login_super_user(data)
+
+            if status == 200:
+                key = secrets.token_urlsafe(20)
+
+                keys.add(key)
+                response['key'] = key
+
+                session['KEY'] = key
+                session['ID'] = id_
+                session['DATETIME'] = datetime.datetime.now()
+
+                handler.register_key('super_user', key)
+
+        except json.JSONDecodeError:
+            status = 422
+            response = {'status': 422, 'result': False, 'event': 'Unable to process the data, not JSON formatted', 'data': {}}
+
+    return jsonify(response), status
 
 
 @app.route('/login/<login_type>', methods=['POST'])
