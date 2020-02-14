@@ -66,7 +66,34 @@ def performance_test():
 
 
 if __name__ == '__main__':
-    a = PermissionManager('sistema')
+
+    # import secrets
+    #
+    # list_batata = []
+    # first = secrets.token_urlsafe(10)
+    # list_batata.append(first)
+    # for i in range(100000):
+    #     list_batata.append(secrets.token_urlsafe(10))
+    #
+    # start = time.time()
+    # print(first in list_batata)
+    # end = time.time()
+    # print(end - start)
+    #
+    # set_batata = set()
+    # first = secrets.token_urlsafe(10)
+    # set_batata.add(first)
+    # for i in range(100000):
+    #     set_batata.add(secrets.token_urlsafe(10))
+    #
+    # start = time.time()
+    # print(first in set_batata)
+    # end = time.time()
+    # print(end - start)
+    #
+    # exit()
+
+    a = PermissionManager()
 
     a.register_resident_session('sistema', 1)
     a.register_employee_session('sistema', 1)

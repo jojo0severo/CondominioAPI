@@ -216,13 +216,13 @@ def event(user_type, search_type):
 
         elif request.method == 'POST':
             status, response = handler.register_event(data)
-            emit('event', {'type': 'registration', 'data': data}, room=session['room'] + '_resident')
-            emit('event', {'type': 'registration', 'data': data}, room=session['room'] + '_employee')
+            emit('event', {'type': 'registration', 'data': data}, room=session['ROOM'] + '_resident')
+            emit('event', {'type': 'registration', 'data': data}, room=session['ROOM'] + '_employee')
 
         else:
             status, response = handler.remove_event(data)
-            emit('event', {'type': 'deletion', 'data': data}, room=session['room'] + '_resident')
-            emit('event', {'type': 'deletion', 'data': data}, room=session['room'] + '_employee')
+            emit('event', {'type': 'deletion', 'data': data}, room=session['ROOM'] + '_resident')
+            emit('event', {'type': 'deletion', 'data': data}, room=session['ROOM'] + '_employee')
 
     except json.JSONDecodeError:
         status = 422
@@ -240,13 +240,13 @@ def notification():
 
     elif request.method == 'POST':
         response = handler.register_notification(data)
-        emit('notification', {'type': 'registration', 'data': data}, room=session['room'] + '_resident')
-        emit('notification', {'type': 'registration', 'data': data}, room=session['room'] + '_employee')
+        emit('notification', {'type': 'registration', 'data': data}, room=session['ROOM'] + '_resident')
+        emit('notification', {'type': 'registration', 'data': data}, room=session['ROOM'] + '_employee')
 
     else:
         response = handler.remove_notification(data)
-        emit('notification', {'type': 'deletion', 'data': data}, room=session['room'] + '_resident')
-        emit('notification', {'type': 'deletion', 'data': data}, room=session['room'] + '_employee')
+        emit('notification', {'type': 'deletion', 'data': data}, room=session['ROOM'] + '_resident')
+        emit('notification', {'type': 'deletion', 'data': data}, room=session['ROOM'] + '_employee')
 
     return response, 204
 
@@ -260,11 +260,11 @@ def guest():
 
     elif request.method == 'POST':
         response = handler.register_guest(data)
-        emit('guest', {'type': 'registration', 'data': data}, room=session['room'] + '_employee')
+        emit('guest', {'type': 'registration', 'data': data}, room=session['ROOM'] + '_employee')
 
     else:
         response = handler.remove_guest(data)
-        emit('guest', {'type': 'deletion', 'data': data}, room=session['room'] + '_employee')
+        emit('guest', {'type': 'deletion', 'data': data}, room=session['ROOM'] + '_employee')
 
     return response, 204
 
@@ -278,11 +278,11 @@ def service():
 
     elif request.method == 'POST':
         response = handler.register_service(data)
-        emit('service', {'type': 'registration', 'data': data}, room=session['room'] + '_employee')
+        emit('service', {'type': 'registration', 'data': data}, room=session['ROOM'] + '_employee')
 
     else:
         response = handler.remove_service(data)
-        emit('service', {'type': 'deletion', 'data': data}, room=session['room'] + '_employee')
+        emit('service', {'type': 'deletion', 'data': data}, room=session['ROOM'] + '_employee')
 
     return response, 204
 
@@ -296,13 +296,13 @@ def rule():
 
     elif request.method == 'POST':
         response = handler.register_rule(data)
-        emit('rule', {'type': 'registration', 'data': data}, room=session['room'] + '_resident')
-        emit('rule', {'type': 'registration', 'data': data}, room=session['room'] + '_employee')
+        emit('rule', {'type': 'registration', 'data': data}, room=session['ROOM'] + '_resident')
+        emit('rule', {'type': 'registration', 'data': data}, room=session['ROOM'] + '_employee')
 
     else:
         response = handler.remove_rule(data)
-        emit('rule', {'type': 'deletion', 'data': data}, room=session['room'] + '_resident')
-        emit('rule', {'type': 'deletion', 'data': data}, room=session['room'] + '_employee')
+        emit('rule', {'type': 'deletion', 'data': data}, room=session['ROOM'] + '_resident')
+        emit('rule', {'type': 'deletion', 'data': data}, room=session['ROOM'] + '_employee')
 
     return response, 204
 
@@ -316,17 +316,20 @@ if __name__ == '__main__':
     from helpers.handler import Handler
 
     handler = Handler()
+    print(super_user_url)
 
-    # import database_cleaner
-    # import bcrypt
-    #
-    # print('\nINSERTIONS\n')
-    # print(handler.permission_manager.address_controller.register_address_by_names('rua', 'bairro', 'cidade', 'estado', 'pais'))
-    # print(handler.permission_manager.condominium_controller.register_condominium('condominio', 23, None, 1))
-    # print(handler.permission_manager.condominium_controller.register_tower('t1', 1))
-    # print(handler.permission_manager.condominium_controller.register_apartment(100, 1))
-    #
-    # print(handler.permission_manager.register_employee('employee', bcrypt.hashpw('password'.encode('utf-8'), bcrypt.gensalt()), 'cpf', 'name', '1999-06-11', None, 'role', 1))
-    # print(handler.permission_manager.register_resident('resident', bcrypt.hashpw('password'.encode('utf-8'), bcrypt.gensalt()), 'cpf', 'name', '1999-06-11', None, 1))
+    import database_cleaner
+    import bcrypt
+    handler.permission_manager.register_key('super_user', 1)
+
+    print('\nINSERTIONS\n')
+    print(handler.permission_manager.address_controller.register_address_by_names('rua', 'bairro', 'cidade', 'estado', 'pais'))
+    print(handler.permission_manager.condominium_controller.register_condominium('condominio', 23, None, 1))
+    print(handler.permission_manager.condominium_controller.register_tower('t1', 1))
+    print(handler.permission_manager.condominium_controller.register_apartment(100, 1))
+    print(handler.permission_manager.condominium_controller.register_apartment(200, 1))
+
+    print(handler.permission_manager.register_employee(2, 'employee', bcrypt.hashpw('password'.encode('utf-8'), bcrypt.gensalt()), 'cpf', 'name', '1999-06-11', None, 'role', 1, 1))
+    # # print(handler.permission_manager.register_resident('cpf', 'name', '1999-06-11', None, 1, 1))
 
     socket.run(app)

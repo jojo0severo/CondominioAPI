@@ -32,7 +32,7 @@ class EmployeeController:
 
             return employee
 
-        except exc.IntegrityError:
+        except exc.IntegrityError as e:
             db.session.rollback()
             return None
 
