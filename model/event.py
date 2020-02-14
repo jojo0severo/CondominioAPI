@@ -15,8 +15,20 @@ class Event(db.Model):
     event_type_id = db.Column(db.Integer, db.ForeignKey('eventtype.id', ondelete='CASCADE'), nullable=False)
     apartment_id = db.Column(db.Integer, db.ForeignKey('apartment.id', ondelete='CASCADE'), nullable=False)
 
-    apartment = db.relationship('Apartment', backref=db.backref('events', lazy=True, cascade='all, delete'), lazy=True)
-    event_type = db.relationship('EventType', backref=db.backref('events', lazy=True, cascade='all, delete'), lazy=True)
+    apartment = db.relationship('Apartment',
+                                backref=db.backref('events',
+                                                   lazy=True,
+                                                   cascade='all, delete',
+                                                   primaryjoin='and_(Event.apartment_id == Apartment.id, Event.active == 1)'),
+                                lazy=True,
+                                primaryjoin='and_(Event.apartment_id == Apartment.id, Apartment.active == 1)')
+
+    event_type = db.relationship('EventType',
+                                 backref=db.backref('events',
+                                                    lazy=True,
+                                                    cascade='all, delete',
+                                                    primaryjoin='and_(Event.event_type_id == EventType.id, Event.active == 1)'),
+                                 lazy=True)
 
     def __repr__(self):
         return f'Event(id={self.id}, ' \

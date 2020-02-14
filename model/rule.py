@@ -8,7 +8,10 @@ class Rule(db.Model):
     text = db.Column(db.String(500), nullable=False)
     condominium_id = db.Column(db.Integer, db.ForeignKey('condominium.id', ondelete='CASCADE'), nullable=False)
 
-    condominium = db.relationship('Condominium', backref=db.backref('rules', lazy=True, cascade='all, delete'), lazy=True)
+    condominium = db.relationship('Condominium',
+                                  backref=db.backref('rules', lazy=True, cascade='all, delete'),
+                                  lazy=True,
+                                  primaryjoin='and_(Rule.condominium_id == Condominium.id, Condominium.active == 1)')
 
     def __repr__(self):
         return f'Rule(text={self.text})'

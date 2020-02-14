@@ -14,7 +14,13 @@ class Guest(db.Model):
     active = db.Column(db.SmallInteger, default=1)
     apartment_id = db.Column(db.Integer, db.ForeignKey('apartment.id', ondelete='CASCADE'), nullable=False)
 
-    apartment = db.relationship('Apartment', backref=db.backref('guests', lazy=True, cascade='all, delete'), lazy=True)
+    apartment = db.relationship('Apartment',
+                                backref=db.backref('guests',
+                                                   lazy=True,
+                                                   cascade='all, delete',
+                                                   primaryjoin='and_(Guest.apartment_id == Apartment.id, Guest.active == 1)'),
+                                lazy=True,
+                                primaryjoin='and_(Guest.apartment_id == Apartment.id, Apartment.active == 1)')
 
     def __repr__(self):
         return f'Guest(id={self.id}, name={self.name}, arrival={self.arrival})'

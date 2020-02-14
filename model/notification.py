@@ -12,7 +12,13 @@ class Notification(db.Model):
     active = db.Column(db.SmallInteger, default=1)
     condominium_id = db.Column(db.Integer, db.ForeignKey('condominium.id', ondelete='CASCADE'), nullable=False)
 
-    condominium = db.relationship('Condominium', backref=db.backref('notifications', lazy=True, cascade='all, delete'), lazy=True)
+    condominium = db.relationship('Condominium',
+                                  backref=db.backref('notifications',
+                                                     lazy=True,
+                                                     cascade='all, delete',
+                                                     primaryjoin='and_(Notification.condominium_id == Condominium.id, Notification.active == 1)'),
+                                  lazy=True,
+                                  primaryjoin='and_(Notification.condominium_id == Condominium.id, Condominium.active == 1)')
 
     def __repr__(self):
         return f'Notification(id={self.id}, ' \

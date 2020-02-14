@@ -9,7 +9,10 @@ class EventType(db.Model):
     name = db.Column(db.String(30), nullable=False)
     condominium_id = db.Column(db.Integer, db.ForeignKey('condominium.id', ondelete='CASCADE'), nullable=False)
 
-    condominium = db.relationship('Condominium', backref=db.backref('event_types', lazy=True, cascade='all, delete'), lazy=True)
+    condominium = db.relationship('Condominium',
+                                  backref=db.backref('event_types', lazy=True, cascade='all, delete'),
+                                  lazy=True,
+                                  primaryjoin='and_(EventType.condominium_id == Condominium.id, Condominium.active == 1)')
 
     def __repr__(self):
         return f'EventType(id={self.id}, name={self.name})'

@@ -15,7 +15,10 @@ class Resident(db.Model):
     photo_location = db.Column(db.String(200), nullable=True, default='data/photos/default/resident.png')
     apartment_id = db.Column(db.Integer, db.ForeignKey('apartment.id', ondelete='CASCADE'), nullable=False)
 
-    apartment = db.relationship('Apartment', backref=db.backref('residents', lazy=True, cascade='all, delete'), lazy=True)
+    apartment = db.relationship('Apartment',
+                                backref=db.backref('residents', lazy=True, cascade='all, delete'),
+                                lazy=True,
+                                primaryjoin='and_(Resident.apartment_id == Apartment.id, Apartment.active == 1)')
 
     def __repr__(self):
         return f'Resident(id={self.id}, ' \

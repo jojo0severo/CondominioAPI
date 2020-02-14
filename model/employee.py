@@ -14,9 +14,14 @@ class Employee(db.Model):
     birthday = db.Column(db.Date, nullable=False)
     photo_location = db.Column(db.String(200), nullable=True, default='data/photos/default/employee.png')
     role = db.Column(db.String(50), nullable=False)
+    type = db.Column(db.SmallInteger, nullable=False)
     condominium_id = db.Column(db.Integer, db.ForeignKey('condominium.id', ondelete='CASCADE'), nullable=False)
+    active = db.Column(db.SmallInteger, default=1)
 
-    condominium = db.relationship('Condominium', backref=db.backref('employees', lazy=True, cascade='all, delete'), lazy=True)
+    condominium = db.relationship('Condominium',
+                                  backref=db.backref('employees', lazy=True, cascade='all, delete'),
+                                  lazy=True,
+                                  primaryjoin='and_(Employee.condominium_id == Condominium.id, Condominium.active == 1)')
 
     def __repr__(self):
         return f'Employee(id={self.id}, ' \
