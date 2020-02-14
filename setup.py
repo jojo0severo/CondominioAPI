@@ -6,7 +6,7 @@ from flask import Flask, request, session, jsonify, abort, make_response
 from flask_socketio import SocketIO, emit, join_room, disconnect
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
-from flask_limiter import Limiter, RateLimitExceeded
+from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 # from flask_session import Session
 
@@ -39,7 +39,7 @@ blocked_sessions = set()
 
 def session_decorator(function):
     @wraps(function)
-    def session_checker(*args):
+    def session_checker(*args, **kwargs):
         session_key = session.get('KEY')
 
         if not session_key:
@@ -62,7 +62,7 @@ def session_decorator(function):
             return {'status': 401, 'result': False, 'event': 'Key not recognized', 'data': {}}, 401
 
         else:
-            return function(*args)
+            return function(*kwargs.values())
 
     return session_checker
 
@@ -83,7 +83,7 @@ def verify_connection():
 
     if not session.get('room') or not session.get('login'):
         del session['KEY']
-        del session['datetime']
+        del session['DATETIME']
         raise ConnectionRefusedError
 
     if session['login'] != 'resident' and session['login'] != 'employee':
@@ -99,16 +99,18 @@ def session_configuration():
 
     session.modified = True
 
-    if 'datetime' in session:
-        datetime_diff = session['datetime'] - datetime.datetime.now()
+    if 'DATETIME' in session:
+        datetime_diff = session['DATETIME'] - datetime.datetime.now()
         if datetime_diff.days < 1:
-            session['datetime'] = datetime.datetime.now()
+            session['DATETIME'] = datetime.datetime.now()
         else:
             handler.drop_session(session['KEY'])
             keys.remove(session['KEY'])
             del session['KEY']
-            del session['room']
-            del session['datetime']
+            del session['ID']
+            del session['ROOM']
+            del session['DATETIME']
+
             disconnect()
 
 
@@ -122,10 +124,10 @@ def login(login_type):
         try:
             data = request.get_json(force=True)
             if login_type == 'resident':
-                status, response, room = handler.login_resident(data)
-    
+                status, response, room, id_ = handler.login_resident(data)
+
             elif login_type == 'employee':
-                status, response, room = handler.login_employee(data)
+                status, response, room, id_, login_type = handler.login_employee(data)
     
             else:
                 status = 400
@@ -136,10 +138,11 @@ def login(login_type):
     
                 keys.add(key)
                 response['key'] = key
+
                 session['KEY'] = key
-                session['login'] = login_type
-                session['room'] = room
-                session['datetime'] = datetime.datetime.now()
+                session['ID'] = id_
+                session['ROOM'] = room
+                session['DATETIME'] = datetime.datetime.now()
 
                 handler.register_key(login_type, key)
                 
@@ -150,40 +153,27 @@ def login(login_type):
     return jsonify(response), status
 
 
-@app.route('/register/<registration_type>')
+@app.route('/register/<registration_type>', methods=['POST'])
+@session_decorator
 def register(registration_type):
-    if session.get('KEY') is not None:
-        status = 409
-        response = {'status': 409, 'result': False, 'event': 'User already logged', 'data': {}}
+    try:
+        data = request.get_json(force=True)
+        if str(registration_type).lower() == 'user':
+            status, response = handler.register_user(data, session['KEY'])
 
-    else:
-        try:
-            data = request.get_json(force=True)
-            if str(registration_type).lower() == 'resident':
-                status, response, room = handler.register_resident(data)
+        elif str(registration_type).lower() == 'resident':
+            status, response = handler.register_resident(data, session['ID'], session['KEY'])
 
-            elif str(registration_type).lower() == 'employee':
-                status, response, room = handler.register_employee(data)
+        elif str(registration_type).lower() == 'employee':
+            status, response = handler.register_employee(data, session['ID'], session['KEY'])
 
-            else:
-                status = 400
-                response = {'status': 400, 'result': False, 'event': 'Invalid registration type', 'data': {}}
+        else:
+            status = 400
+            response = {'status': 400, 'result': False, 'event': 'Invalid registration type', 'data': {}}
 
-            if status == 201:
-                key = secrets.token_urlsafe(20)
-
-                keys.add(key)
-                response['key'] = key
-                session['KEY'] = key
-                session['login'] = registration_type
-                session['room'] = room
-                session['datetime'] = datetime.datetime.now()
-
-                handler.register_key(registration_type, key)
-
-        except json.JSONDecodeError:
-            status = 422
-            response = {'status': 422, 'result': False, 'event': 'Unable to process the data, not JSON formatted', 'data': {}}
+    except json.JSONDecodeError:
+        status = 422
+        response = {'status': 422, 'result': False, 'event': 'Unable to process the data, not JSON formatted', 'data': {}}
 
     return jsonify(response), status
 

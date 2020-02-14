@@ -2,62 +2,90 @@ import base64
 
 
 class JSONFormatter:
+
+    def format_super_user_connection(self, result, info, status):
+        if result:
+            return status['success'], {'status': status['success'], 'result': True, 'event': 'Success', 'message': '', 'data': {'username': info.username}}
+
+        return status['failure'],  {'status': status['failure'], 'result': False, 'event': 'Failure', 'message': 'Super user could not be logged', 'data': {}}
+
+    def format_resident_login(self, result, info, status):
+        if result:
+            if not info:
+                return status['empty'], {'status': status['empty'], 'result': False, 'event': 'Empty', 'message': 'No resident found', 'data': []}, None, None
+
+            response = {'status': status['success'],
+                        'result': True,
+                        'event': 'Success',
+                        'message': '',
+                        'data': []}
+
+            for resident in info:
+                response['data'].append(self.format_resident(resident))
+
+            return status['success'], response, None, None
+
+        return status['failure'], {'status': status['failure'], 'result': False, 'event': 'Failure', 'message': info, 'data': {}}, None, None
+
     def format_resident_connection(self, result, info, status):
         if result:
-            condominium = self.format_condominium(info[3])
-
             return {'status': status['success'],
                     'result': True,
-                    'event': 'Resident successfully logged',
+                    'event': 'Success',
+                    'message': '',
                     'data': {
-                        'resident': self.format_resident(info[0]),
+                        'resident': self.format_employee(info[0]),
                         'apartment': self.format_apartment(info[1]),
                         'tower': self.format_tower(info[2]),
-                        'condominium': condominium,
+                        'condominium': self.format_condominium(info[3]),
                         'address': self.format_address(info[4])
                     }
-                    }, condominium['Name']
+                    }
 
-        return {'status': status['failure'], 'result': False, 'event': info, 'data': {}}, None
+        return {'status': status['failure'], 'result': False, 'event': 'Failure', 'message': info, 'data': {}}
 
     def format_employee_connection(self, result, info, status):
         if result:
-            condominium = self.format_condominium(info[1])
             return {'status': status['success'],
                     'result': True,
-                    'event': 'Resident successfully logged',
+                    'event': 'Success',
+                    'message': '',
                     'data': {
                         'employee': self.format_employee(info[0]),
-                        'condominium': condominium,
+                        'condominium': self.format_condominium(info[1]),
                         'address': self.format_address(info[2])
                     }
-                    }, condominium['Name']
+                    }, info[1].name, info[0].id
 
-        return {'status': status['failure'], 'result': False, 'event': info, 'data': {}}, None
+        return {'status': status['failure'], 'result': False, 'event': 'Failure', 'message': info, 'data': {}}, None, None
 
     def format_employees(self, result, info, status):
         if result:
             if not info:
-                return {'status': status['empty'], 'result': False, 'event': 'No employee found', 'data': []}
+                return {'status': status['empty'], 'result': False, 'event': 'Empty', 'message': 'No employee found', 'data': []}
 
-            response = {'status': status['success'], 'result': True, 'event': 'Employees recovered', 'data': []}
+            response = {'status': status['success'], 'result': True, 'event': 'Success', 'message': '', 'data': []}
             for employee in info:
                 response['data'].append(self.format_employee(employee))
             return response
 
-        return {'status': status['failure'], 'result': False, 'event': info, 'data': {}}
+        return {'status': status['failure'], 'result': False, 'event': 'Failure', 'message': info, 'data': {}}
 
     def format_residents(self, result, info, status):
         if result:
             if not info:
-                return {'status': 404, 'result': False, 'event': 'No resident found', 'data': []}
+                return {'status': status['empty'], 'result': False, 'event': 'Empty', 'message': 'No resident found', 'data': []}
 
-            response = {'status': status['success'], 'result': True, 'event': 'Residents recovered', 'data': []}
+            response = {'status': status['success'], 'result': True, 'event': 'Success', 'message': '', 'data': []}
             for resident in info:
                 response['data'].append(self.format_resident(resident))
             return response
 
-        return {'status': status['failure'], 'result': False, 'event': info, 'data': {}}
+        return {'status': status['failure'], 'result': False, 'event': 'Failure', 'message': info, 'data': {}}
+
+    @staticmethod
+    def response(status, event, message=''):
+        return {'status': status, 'result': status in [200, 201], 'event': event, 'message': message}
 
     @staticmethod
     def format_resident(resident):

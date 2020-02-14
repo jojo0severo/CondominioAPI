@@ -20,10 +20,10 @@ class Handler:
         username = data['username']
         password = data['password']
 
-        result, info = self.permission_manager.login_resident(username, password)
-        response, room = self.formatter.format_resident_connection(result, info, {'success': 200, 'failure': 400, 'empty': 404})
+        result, info, apt_id, room = self.permission_manager.login_resident(username, password)
+        status, response = self.formatter.format_resident_login(result, info, {'success': 200, 'failure': 400, 'empty': 404})
 
-        return response['status'], response, room
+        return status, response, room, apt_id
 
     @runtime_error_decorator
     @key_error_decorator
@@ -31,51 +31,63 @@ class Handler:
         username = data['username']
         password = data['password']
 
-        result, info = self.permission_manager.login_employee(username, password)
-        response, room = self.formatter.format_employee_connection(result, info, {'success': 200, 'failure': 400, 'empty': 404})
+        result, info, login_type = self.permission_manager.login_employee(username, password)
+        response, room, employee_id = self.formatter.format_employee_connection(result, info, {'success': 200, 'failure': 400, 'empty': 404})
 
-        return response['status'], response, room
+        return response['status'], response, room, employee_id, login_type
 
     @runtime_error_decorator
     @key_error_decorator
-    def register_resident(self, data):
-        username = data['username']
-        password = bcrypt.hashpw(data['password'], bcrypt.gensalt())
+    def register_resident(self, data, father_id, user_key):
         cpf = data['cpf']
         name = data['name']
         birthday = data['birthday']
-        apartment_id = data['apartment_id']
 
         if 'photo_location' not in data:
             photo_location = None
         else:
             photo_location = data['photo_location']
 
-        result, info = self.permission_manager.register_resident(username, password, cpf, name, birthday, photo_location, apartment_id)
-        response, room = self.formatter.format_resident_connection(result, info, {'success': 201, 'failure': 409, 'empty': 404})
+        result, info = self.permission_manager.register_resident(cpf, name, birthday, photo_location, father_id, user_key)
+        response = self.formatter.format_resident_connection(result, info, {'success': 201, 'failure': 409, 'empty': 404})
 
-        return response['status'], response, room
+        return response['status'], response
 
     @runtime_error_decorator
     @key_error_decorator
-    def register_employee(self, data):
+    def register_resident_user(self, data, father_id, user_key):
         username = data['username']
-        password = bcrypt.hashpw(data['password'], bcrypt.gensalt())
+        password = bcrypt.hashpw(data['password'].encode('utf-8'), bcrypt.gensalt())
+
+        result, info = self.permission_manager.register_resident_user(username, password, father_id, user_key)
+        if result:
+            return 200, self.formatter.response(200, 'Resident user registered')
+
+        return 400, self.formatter.response(400, 'Resident user could not be registered')
+
+    @runtime_error_decorator
+    @key_error_decorator
+    def register_employee(self, data, father_id, user_key):
+        employee_type = data['employee_type']
+        username = data['username']
+        password = bcrypt.hashpw(data['password'].encode('utf-8'), bcrypt.gensalt())
         cpf = data['cpf']
         name = data['name']
         birthday = data['birthday']
         role = data['role']
-        condominium_id = data['condominium_id']
 
         if 'photo_location' not in data:
             photo_location = None
         else:
             photo_location = data['photo_location']
 
-        result, info = self.permission_manager.register_employee(username, password, cpf, name, birthday, photo_location, role, condominium_id)
-        response, room = self.formatter.format_employee_connection(result, info, {'success': 201, 'failure': 409, 'empty': 404})
+        if 'condominium_id' in data:
+            father_id = data['condominium_id']
 
-        return response['status'], response, room
+        result, info = self.permission_manager.register_employee(employee_type, username, password, cpf, name, birthday, photo_location, role, father_id, user_key)
+        response, _, _ = self.formatter.format_employee_connection(result, info, {'success': 201, 'failure': 409, 'empty': 404})
+
+        return response['status'], response
 
     @runtime_error_decorator
     @key_error_decorator
