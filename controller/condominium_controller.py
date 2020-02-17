@@ -22,6 +22,9 @@ class CondominiumController:
     def get_resident_login_info(self, apartment_id):
         return Resident.query.join(Apartment).filter_by(id=apartment_id).join(Tower).join(Condominium).all()
 
+    def get_apartment_condominium_id(self, apartment_id):
+        return Apartment.query.filter_by(id=apartment_id).join(Tower).join(Condominium).with_entities(Condominium.id).first()[0]
+
     def register_condominium(self, name, street_number, photo_location, address_id):
         try:
             condominium = Condominium(name=name, street_number=street_number, photo_location=photo_location, address_id=address_id)
