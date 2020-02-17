@@ -6,7 +6,12 @@ class Rule(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     text = db.Column(db.String(500), nullable=False)
+    employee_id = db.Column(db.Integer, db.ForeignKey('employee.id', ondelete='CASCADE'), nullable=False)
     condominium_id = db.Column(db.Integer, db.ForeignKey('condominium.id', ondelete='CASCADE'), nullable=False)
+
+    author = db.relationship('Employee',
+                             backref=db.backref('rules', lazy=True, cascade='all, delete'),
+                             lazy=True)
 
     condominium = db.relationship('Condominium',
                                   backref=db.backref('rules', lazy=True, cascade='all, delete'),
