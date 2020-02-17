@@ -54,7 +54,7 @@ class PermissionManager:
     def login_resident(self, username, password):
         user = self.resident_controller.do_login(username)
         if user is None:
-            return False, 'User not found.'
+            return False, 'User not found.', None, None
 
         if bcrypt.checkpw(password.encode('utf-8'), user.password):
             return True, \
@@ -62,31 +62,38 @@ class PermissionManager:
                    user.apartment_id, \
                    user.apartment.tower.condominium.name
 
-        return False, 'User password does not match.'
+        return False, 'User password does not match.', None, None
 
     def login_employee(self, username, password):
         user = self.employee_controller.do_login(username)
 
         if user is None:
-            return False, 'User not found.'
+            return False, 'User not found.', None
 
-        if bcrypt.checkpw(password.encode('utf-8'), user.password):
+        elif bcrypt.checkpw(password.encode('utf-8'), user.password):
             employee = user.employee
             return True, [employee,
                           employee.condominium,
                           employee.condominium.address], self.employee_types[employee.type]
         else:
-            return False, 'User password does not match.'
+            return False, 'User password does not match.', None
 
-    def register_resident_user(self, username, hash_password, father_id, user_key):
+    def register_resident_user(self, username, hash_password, apartment_id, father_id, user_key):
         if user_key not in self.users_permission_level:
             return False, 'User session not registered'
 
-        if self.users_permission_level[user_key] < PermissionLevel.EMPLOYEE or self.users_permission_level[user_key] == PermissionLevel.SYSTEM:
+        if self.users_permission_level[user_key] < PermissionLevel.EMPLOYEE:
             return False, 'User does not have the necessary permission'
 
-        else:
-            return self.resident_controller.register_user(username, hash_password, father_id), None
+        elif PermissionLevel.EMPLOYEE <= self.users_permission_level[user_key] <= PermissionLevel.SUPER_EMPLOYEE:
+            for tower in self.employee_controller.get_employee_by_id(father_id).condominium:
+                for apartment in tower.apartments:
+                    if apartment.id == apartment_id:
+                        return self.resident_controller.register_user(username, hash_password, apartment_id), None
+
+            return False, 'User does not have the privileges to do such operation'
+
+        return self.resident_controller.register_user(username, hash_password, apartment_id), None
 
     def register_resident(self, cpf, name, birthday, photo_location, father_id, user_key):
         if user_key not in self.users_permission_level:
@@ -119,7 +126,7 @@ class PermissionManager:
                                                                   cpf, name, birthday, photo_location, role,
                                                                   condominium_id)
 
-        elif self.users_permission_level[user_key] == PermissionLevel.SYSTEM and employee_type == 2:
+        elif self.users_permission_level[user_key] == PermissionLevel.SYSTEM:
             employee = self.employee_controller.register_employee(employee_type,
                                                                   username, hash_password,
                                                                   cpf, name, birthday, photo_location, role,
@@ -140,10 +147,8 @@ class PermissionManager:
         if user_key not in self.users_permission_level:
             return False, 'User session not registered'
 
-        elif self.users_permission_level[user_key] < PermissionLevel.EMPLOYEE:
-            return False, 'User does not have the necessary permission level'
-
-        return True, self.employee_controller.get_employee_by_id(user_id).condominium.employees
+        elif PermissionLevel.EMPLOYEE <= self.users_permission_level[user_key] <= PermissionLevel.SUPER_EMPLOYEE:
+            return True, self.employee_controller.get_employee_by_id(user_id).condominium.employees
 
         return False, 'User does not have the necessary permission level'
 
@@ -151,7 +156,14 @@ class PermissionManager:
         if user_key not in self.users_permission_level:
             return False, 'User session not registered'
 
-        elif self.users_permission_level[user_key] < PermissionLevel.EMPLOYEE:
+        elif self.users_permission_level[user_key] == PermissionLevel.RESIDENT:
+            apartment = self.condominium_controller.get_apartment_by_id(father_id)
+            if apartment is None:
+                return False, 'ID not found'
+
+            elif apartment.apt_number == apartment_number:
+                return True, apartment.residents
+
             return False, 'User does not have the necessary permission level'
 
         elif PermissionLevel.EMPLOYEE <= self.users_permission_level[user_key] <= PermissionLevel.SUPER_EMPLOYEE:

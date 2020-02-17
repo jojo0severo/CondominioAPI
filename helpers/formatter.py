@@ -12,7 +12,7 @@ class JSONFormatter:
     def format_resident_login(self, result, info, status):
         if result:
             if not info:
-                return status['empty'], {'status': status['empty'], 'result': False, 'event': 'Empty', 'message': 'No resident found', 'data': []}, None, None
+                return status['empty'], {'status': status['empty'], 'result': False, 'event': 'Empty', 'message': 'No resident found', 'data': []}
 
             response = {'status': status['success'],
                         'result': True,
@@ -23,9 +23,9 @@ class JSONFormatter:
             for resident in info:
                 response['data'].append(self.format_resident(resident))
 
-            return status['success'], response, None, None
+            return status['success'], response
 
-        return status['failure'], {'status': status['failure'], 'result': False, 'event': 'Failure', 'message': info, 'data': {}}, None, None
+        return status['failure'], {'status': status['failure'], 'result': False, 'event': 'Failure', 'message': info, 'data': {}}
 
     def format_resident_connection(self, result, info, status):
         if result:
@@ -34,7 +34,7 @@ class JSONFormatter:
                     'event': 'Success',
                     'message': '',
                     'data': {
-                        'resident': self.format_employee(info[0]),
+                        'resident': self.format_resident(info[0]),
                         'apartment': self.format_apartment(info[1]),
                         'tower': self.format_tower(info[2]),
                         'condominium': self.format_condominium(info[3]),
