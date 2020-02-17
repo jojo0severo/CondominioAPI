@@ -24,6 +24,7 @@ class PermissionManager:
         self.rule_controller = RuleController()
         self.guest_controller = GuestController()
         self.service_controller = ServiceController()
+        self.event_controller = EventController()
 
     def register_key(self, key_type, session_key):
         if key_type == 'employee':

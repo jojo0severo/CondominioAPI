@@ -3,7 +3,11 @@ from setup import db
 
 class Notification(db.Model):
     __tablename__ = 'notification'
-    __table_args__ = (db.Index('finish_date'), db.Index('title', 'condominium_id'), db.UniqueConstraint('title', 'condominium_id'))
+    __table_args__ = (
+        db.UniqueConstraint('title', 'condominium_id'),
+        db.Index('date_idx', 'finish_date'),
+        db.Index('notification_idx', 'title', 'condominium_id')
+    )
 
     id = db.Column(db.Integer, primary_key=True)
     type = db.Column(db.Integer, nullable=False)
@@ -31,7 +35,7 @@ class Notification(db.Model):
 
     def __repr__(self):
         return f'Notification(id={self.id}, ' \
-            f'type={self.type}, ' \
-            f'title={self.title}, ' \
-            f'text={self.text}, ' \
-            f'finish_date={self.finish_date})'
+               f'type={self.type}, ' \
+               f'title={self.title}, ' \
+               f'text={self.text}, ' \
+               f'finish_date={self.finish_date})'

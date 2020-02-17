@@ -3,6 +3,10 @@ from setup import db
 
 class Rule(db.Model):
     __tablename__ = 'rule'
+    __table_args = (
+        db.UniqueConstraint('text', 'condominium_id'),
+        db.Index('rule_idx', 'text')
+    )
 
     id = db.Column(db.Integer, primary_key=True)
     text = db.Column(db.String(500), nullable=False)
