@@ -121,28 +121,59 @@ class Handler:
 
     @runtime_error_decorator
     @key_error_decorator
-    def get_events(self, data, user_type, search_type, user_key):
-        if user_type not in ['employee', 'resident']:
-            raise ValueError(f'user_type: "{user_type}"')
-
-        if search_type == 'all':
-            user_id = int(base64.urlsafe_b64decode(data['user_id']).decode('ascii'))
-            result, info = self.permission_manager.get_condominium_events(user_id)
-
-        elif search_type in ['mine', 'apartment']:
-            user_id = int(base64.urlsafe_b64decode(data['user_id']).decode('ascii'))
-            if 'apartment_number' in data:
-                apartment_number = data['apartment_number']
-            else:
-                apartment_number = None
-
-            result, info = self.permission_manager.get_apartment_events(user_id, apartment_number, user_key)
+    @value_error_decorator
+    @type_error_decorator
+    def get_notifications(self, father_id, user_key):
+        result, info = self.permission_manager.get_notifications(father_id, user_key)
+        response = self.formatter.format_notifications(result, info, {'success': 200, 'failure': 403, 'empty': 404})
 
         else:
             raise ValueError(f'search_type: "{search_type}"')
 
         response = self.formatter.format_events(result, info, {'success': 200, 'failure': 403, 'empty': 404})
         return response['status'], response
+
+    @runtime_error_decorator
+    @key_error_decorator
+    @value_error_decorator
+    @type_error_decorator
+    def get_guests(self, father_id, user_key):
+        result, info = self.permission_manager.get_guests(father_id, user_key)
+        response = self.formatter.format_guests(result, info, {'success': 200, 'failure': 403, 'empty': 404})
+
+        return response['status'], response
+
+    @runtime_error_decorator
+    @key_error_decorator
+    @value_error_decorator
+    @type_error_decorator
+    def register_notification(self, data, father_id, user_key):
+        notification_type = int(data['notification_type'])
+        title = data['title']
+        text = data['text']
+        finish_date = data['finish_date']
+
+        result, info = self.permission_manager.register_notification(notification_type, title, text, finish_date, father_id, user_key)
+        if result:
+            return 201, self.formatter.response(201, 'Success')
+
+        return 400, self.formatter.response(400, 'Failure', info)
+
+    @runtime_error_decorator
+    @key_error_decorator
+    @value_error_decorator
+    @type_error_decorator
+    def remove_notification(self, data, father_id, user_key):
+        notification_id = data['notification_id']
+
+        result, info = self.permission_manager.remove_notification(notification_id, father_id, user_key)
+        if result is True:
+            return 201, self.formatter.response(201, 'Success')
+
+        elif result is None:
+            return 404, self.formatter.response(400, 'Failure', info)
+
+        return 400, self.formatter.response(400, 'Failure', info)
 
     @runtime_error_decorator
     def drop_session(self, session_key):

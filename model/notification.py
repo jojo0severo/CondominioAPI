@@ -3,6 +3,7 @@ from setup import db
 
 class Notification(db.Model):
     __tablename__ = 'notification'
+    __table_args__ = (db.Index('finish_date'), db.Index('title', 'condominium_id'), db.UniqueConstraint('title', 'condominium_id'))
 
     id = db.Column(db.Integer, primary_key=True)
     type = db.Column(db.Integer, nullable=False)
@@ -10,7 +11,15 @@ class Notification(db.Model):
     text = db.Column(db.String(300), nullable=False)
     finish_date = db.Column(db.Date, nullable=True)
     active = db.Column(db.SmallInteger, default=1)
+    employee_id = db.Column(db.Integer, db.ForeignKey('employee.id', ondelete='CASCADE'), nullable=False)
     condominium_id = db.Column(db.Integer, db.ForeignKey('condominium.id', ondelete='CASCADE'), nullable=False)
+
+    author = db.relationship('Employee',
+                             backref=db.backref('notifications',
+                                                lazy=True,
+                                                cascade='all, delete',
+                                                primaryjoin='and_(Notification.employee_id == Employee.id, Notification.active == 1)'),
+                             lazy=True)
 
     condominium = db.relationship('Condominium',
                                   backref=db.backref('notifications',

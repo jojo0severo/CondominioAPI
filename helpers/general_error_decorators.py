@@ -29,6 +29,17 @@ def value_error_decorator(func):
         try:
             return func(*args)
         except ValueError as e:
-            return 400, {'status': 400, 'result': False, 'event': f'Unknown option passed: {e}', 'data': {}}
+            return 400, {'status': 400, 'result': False, 'event': f'Attribute type error: {e}', 'data': {}}
 
     return handle_value_error
+
+
+def type_error_decorator(func):
+    @wraps(func)
+    def handle_type_error(*args):
+        try:
+            return func(*args)
+        except ValueError as e:
+            return 400, {'status': 400, 'result': False, 'event': f'Unknown option passed: {e}', 'data': {}}
+
+    return handle_type_error

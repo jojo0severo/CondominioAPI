@@ -19,10 +19,11 @@ class NotificationController:
     def get_notification_by_id(self, notification_id):
         return Notification.query.filter(and_(Notification.id == notification_id, Notification.active == 1))
 
-    def register_notification(self, noti_type, title, text, finish_date, condominium_id):
+    def register_notification(self, noti_type, title, text, finish_date, employee_id, condominium_id):
         try:
             finish_date = datetime.datetime.strptime(finish_date, '%Y-%m-%d')
-            notification = Notification(type=noti_type, title=title, text=text, finish_date=finish_date, condominium_id=condominium_id)
+            notification = Notification(type=noti_type, title=title, text=text, finish_date=finish_date,
+                                        employee_id=employee_id, condominium_id=condominium_id)
             db.session.add(notification)
             db.session.commit()
 

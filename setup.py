@@ -238,49 +238,32 @@ def residents():
     return response, status
 
 
-@app.route('/event/<user_type>/<search_type>', methods=['GET', 'POST', 'DELETE'])
-@session_decorator
-def event(user_type, search_type):
-    try:
-        data = request.get_json(force=True)
-        if request.method == 'GET':
-            status, response = handler.get_events(data, user_type, search_type, session['KEY'])
-
-        elif request.method == 'POST':
-            status, response = handler.register_event(data)
-            emit('event', {'type': 'registration', 'data': data}, room=session['ROOM'] + '_resident')
-            emit('event', {'type': 'registration', 'data': data}, room=session['ROOM'] + '_employee')
-
-        else:
-            status, response = handler.remove_event(data)
-            emit('event', {'type': 'deletion', 'data': data}, room=session['ROOM'] + '_resident')
-            emit('event', {'type': 'deletion', 'data': data}, room=session['ROOM'] + '_employee')
-
-    except json.JSONDecodeError:
-        status = 422
-        response = {'status': 422, 'result': False, 'event': 'Unable to process the data, not JSON formatted', 'data': {}}
-
-    return response, status
-
-
-@app.route('/notification', methods=['GET', 'POST', 'DELETE'])
+@app.route('/notification/', methods=['GET', 'POST', 'DELETE'])
 @session_decorator
 def notification():
     data = request.get_json(force=True)
     if request.method == 'GET':
-        response = handler.get_notifications(data)
+        status, response = handler.get_notifications(session['ID'], session['KEY'])
+
+        if status == 190:
+            status = 400
+            blocked_sessions.add(session['KEY'])
 
     elif request.method == 'POST':
-        response = handler.register_notification(data)
-        emit('notification', {'type': 'registration', 'data': data}, room=session['ROOM'] + '_resident')
-        emit('notification', {'type': 'registration', 'data': data}, room=session['ROOM'] + '_employee')
+        status, response = handler.register_notification(data, session['ID'], session['KEY'])
+
+        if status == 201:
+            socket.emit('notification', {'type': 'registration', 'data': data}, room=session['ROOM'] + '_resident')
+            socket.emit('notification', {'type': 'registration', 'data': data}, room=session['ROOM'] + '_employee')
 
     else:
-        response = handler.remove_notification(data)
-        emit('notification', {'type': 'deletion', 'data': data}, room=session['ROOM'] + '_resident')
-        emit('notification', {'type': 'deletion', 'data': data}, room=session['ROOM'] + '_employee')
+        status, response = handler.remove_notification(data)
 
-    return response, 204
+        if status == 201:
+            socket.emit('notification', {'type': 'deletion', 'data': data}, room=session['ROOM'] + '_resident')
+            socket.emit('notification', {'type': 'deletion', 'data': data}, room=session['ROOM'] + '_employee')
+
+    return response, status
 
 
 @app.route('/guest', methods=['GET', 'POST', 'DELETE'])
@@ -339,6 +322,32 @@ def rule():
     return response, 204
 
 
+@app.route('/event/<user_type>/<search_type>', methods=['GET', 'POST', 'DELETE'])
+@session_decorator
+@first_login_decorator
+def event(user_type, search_type):
+    try:
+        data = request.get_json(force=True)
+        if request.method == 'GET':
+            status, response = handler.get_events(data, user_type, search_type, session['KEY'])
+
+        elif request.method == 'POST':
+            status, response = handler.register_event(data)
+            socket.emit('event', {'type': 'registration', 'data': data}, room=session['ROOM'] + '_resident')
+            socket.emit('event', {'type': 'registration', 'data': data}, room=session['ROOM'] + '_employee')
+
+        else:
+            status, response = handler.remove_event(data)
+            socket.emit('event', {'type': 'deletion', 'data': data}, room=session['ROOM'] + '_resident')
+            socket.emit('event', {'type': 'deletion', 'data': data}, room=session['ROOM'] + '_employee')
+
+    except json.JSONDecodeError:
+        status = 422
+        response = {'status': 422, 'result': False, 'event': 'Unable to process the data, not JSON formatted', 'data': {}}
+
+    return response, status
+
+
 @app.errorhandler(429)
 def handle_too_many_requests(e):
     return jsonify({'status': 429, 'result': False, 'event': f'Too many requests made: {e.description}', 'data': {}})
@@ -350,18 +359,21 @@ if __name__ == '__main__':
     handler = Handler()
     print(super_user_url)
 
-    import database_cleaner
-    import bcrypt
-    handler.permission_manager.register_key('super_user', 1)
-
-    print('\nINSERTIONS\n')
-    print(handler.permission_manager.address_controller.register_address_by_names('rua', 'bairro', 'cidade', 'estado', 'pais'))
-    print(handler.permission_manager.condominium_controller.register_condominium('condominio', 23, None, 1))
-    print(handler.permission_manager.condominium_controller.register_tower('t1', 1))
-    print(handler.permission_manager.condominium_controller.register_apartment(100, 1))
-    print(handler.permission_manager.condominium_controller.register_apartment(200, 1))
-
-    print(handler.permission_manager.register_employee(2, 'employee', bcrypt.hashpw('password'.encode('utf-8'), bcrypt.gensalt()), 'cpf', 'name', '1999-06-11', None, 'role', 1, 1))
-    # # print(handler.permission_manager.register_resident('cpf', 'name', '1999-06-11', None, 1, 1))
+    # import database_cleaner
+    # import bcrypt
+    # handler.permission_manager.register_key('super_user', 1)
+    # handler.permission_manager.register_key('resident', 2)
+    #
+    # print('\nINSERTIONS\n')
+    # print(handler.permission_manager.address_controller.register_address_by_names('rua', 'bairro', 'cidade', 'estado', 'pais'))
+    # print(handler.permission_manager.condominium_controller.register_condominium('condominio', 23, None, 1))
+    # print(handler.permission_manager.condominium_controller.register_tower('t1', 1))
+    # print(handler.permission_manager.condominium_controller.register_apartment(100, 1))
+    # print(handler.permission_manager.condominium_controller.register_apartment(200, 1))
+    #
+    # print(handler.permission_manager.register_employee(2, 'employee', bcrypt.hashpw('password'.encode('utf-8'), bcrypt.gensalt()), 'cpf', 'name', '1999-06-11', None, 'role', 1, 1))
+    # print(handler.permission_manager.register_resident_user('resident', bcrypt.hashpw('password'.encode('utf-8'), bcrypt.gensalt()), 1, 1, 1))
+    # print(handler.permission_manager.register_resident('cpf', 'name', '1999-06-11', None, 1, 2))
+    # print(handler.permission_manager.notification_controller.register_notification(1, 'Titulo', 'Texto', '1999-06-11', 1, 1))
 
     socket.run(app)

@@ -145,16 +145,57 @@ class PermissionManager:
 
         return True, self.employee_controller.get_employee_by_id(user_id).condominium.employees
 
-    def get_residents(self, user_id, apartment_number, user_key):
+        return False, 'User does not have the necessary permission level'
+
+    def get_residents(self, user_id, apartment_number, father_id, user_key):
         if user_key not in self.users_permission_level:
             return False, 'User session not registered'
 
         elif self.users_permission_level[user_key] < PermissionLevel.EMPLOYEE:
             return False, 'User does not have the necessary permission level'
 
-        condominium_id = self.employee_controller.get_employee_by_id(user_id).condominium_id
-        return True, self.condominium_controller.get_apartment_residents_by_condominium_id_and_apt_number(
-            condominium_id, apartment_number)
+        elif PermissionLevel.EMPLOYEE <= self.users_permission_level[user_key] <= PermissionLevel.SUPER_EMPLOYEE:
+            condominium_id = self.employee_controller.get_employee_by_id(user_id).condominium_id
+            return True, self.condominium_controller.get_apartment_residents_by_condominium_id_and_apt_number(condominium_id, apartment_number)
+
+        return False, 'User does not have the necessary permission level'
+
+    def get_notifications(self, father_id, user_key):
+        if user_key not in self.users_permission_level:
+            return False, 'User session not registered'
+
+        elif self.users_permission_level[user_key] == PermissionLevel.RESIDENT:
+            condominium_id = self.condominium_controller.get_apartment_condominium_id(father_id)
+            return True, self.condominium_controller.get_condominium_by_id(condominium_id).notifications
+
+        elif PermissionLevel.EMPLOYEE <= self.users_permission_level[user_key] <= PermissionLevel.SUPER_EMPLOYEE:
+            return True, self.employee_controller.get_employee_by_id(father_id).condominium.notifications
+
+        return False, 'User does not have the necessary permission level'
+
+    def register_notification(self, notification_type, title, text, finish_date, father_id, user_key):
+        if user_key not in self.users_permission_level:
+            return False, 'User session not registered'
+
+        elif PermissionLevel.EMPLOYEE <= self.users_permission_level[user_key] <= PermissionLevel.SUPER_EMPLOYEE:
+            condominium_id = self.employee_controller.get_employee_by_id(father_id).condominium_id
+            return True, self.notification_controller.register_notification(notification_type, title, text, finish_date, father_id, condominium_id)
+
+        return False, 'User does not have the necessary permission level'
+
+    def remove_notification(self, notification_id, father_id, user_key):
+        if user_key not in self.users_permission_level:
+            return False, 'User session not registered'
+
+        elif PermissionLevel.EMPLOYEE <= self.users_permission_level[user_key] <= PermissionLevel.SUPER_EMPLOYEE:
+            for notification in self.employee_controller.get_employee_by_id(father_id).condominium.notifications:
+                if notification.id == notification_id:
+                    self.notification_controller.remove_notification(notification)
+                    return True, None
+
+            return None, 'Notification not found'
+
+        return False, 'User does not have the necessary permission level'
 
     def drop_session(self, session_key):
         if session_key not in self.users_permission_level:
