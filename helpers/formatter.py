@@ -96,6 +96,19 @@ class JSONFormatter:
 
         return {'status': status['failure'], 'result': False, 'event': 'Failure', 'message': info, 'data': {}}
 
+    def format_guests(self, result, info, status):
+        if result:
+            if not info:
+                return {'status': status['empty'], 'result': False, 'event': 'Empty', 'message': 'No guest found', 'data': []}
+
+            response = {'status': status['success'], 'result': True, 'event': 'Success', 'message': '', 'data': []}
+            for guest in info:
+                response['data'].append(self.format_guest(guest))
+
+            return response
+
+        return {'status': status['failure'], 'result': False, 'event': 'Failure', 'message': info, 'data': {}}
+
     @staticmethod
     def response(status, event, message=''):
         return {'status': status, 'result': status in [200, 201], 'event': event, 'message': message}
@@ -141,3 +154,8 @@ class JSONFormatter:
         return {'Type': notification.type,
                 'Title': notification.title,
                 'Finish Date': notification.finish_date}
+
+    @staticmethod
+    def format_guest(guest):
+        return {'Name': guest.name,
+                'Arrival': guest.arrival}

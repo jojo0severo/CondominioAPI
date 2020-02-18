@@ -313,17 +313,17 @@ def notification():
 def guest():
     data = request.get_json(force=True)
     if request.method == 'GET':
-        response = handler.get_guests(session['ID'], session['KEY'])
+        status, response = handler.get_guests(data, session['ID'], session['KEY'])
 
     elif request.method == 'POST':
-        response = handler.register_guest(data)
+        status, response = handler.register_guest(data, session['ID'], session['KEY'])
         socket.emit('guest', {'type': 'registration', 'data': data}, room=session['ROOM'] + '_employee')
 
     else:
-        response = handler.remove_guest(data)
+        status, response = handler.remove_guest(data)
         socket.emit('guest', {'type': 'deletion', 'data': data}, room=session['ROOM'] + '_employee')
 
-    return response, 204
+    return response, status
 
 
 @app.route('/service', methods=['GET', 'POST', 'DELETE'])

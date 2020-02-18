@@ -186,13 +186,50 @@ class PermissionManager:
 
         return False, 'User does not have the necessary permission level'
 
+    def get_guests(self, apartment_id, father_id, user_key):
+        if user_key not in self.users_permission_level:
+            return False, 'User session not registered'
+
+        elif self.users_permission_level[user_key] == PermissionLevel.RESIDENT:
+            return True, self.condominium_controller.get_apartment_by_id(father_id).guests
+
+        elif PermissionLevel.EMPLOYEE <= self.users_permission_level[user_key] <= PermissionLevel.SUPER_EMPLOYEE:
+            if apartment_id is None:
+                return False, 'User does not have the privileges to do such operation'
+
+            for tower in self.employee_controller.get_employee_by_id(father_id).condominium:
+                for apartment in tower.apartments:
+                    if apartment.id == apartment_id:
+                        return True, apartment.guests
+
+            return False, 'Apartment not found'
+
+        return False, 'User does not have the necessary permission level'
+
     def register_notification(self, notification_type, title, text, finish_date, father_id, user_key):
         if user_key not in self.users_permission_level:
             return False, 'User session not registered'
 
         elif PermissionLevel.EMPLOYEE <= self.users_permission_level[user_key] <= PermissionLevel.SUPER_EMPLOYEE:
             condominium_id = self.employee_controller.get_employee_by_id(father_id).condominium_id
-            return True, self.notification_controller.register_notification(notification_type, title, text, finish_date, father_id, condominium_id)
+            result = self.notification_controller.register_notification(notification_type, title, text, finish_date, father_id, condominium_id)
+            if result:
+                return True, None
+
+            return False, 'Notification could not be registered'
+
+        return False, 'User does not have the necessary permission level'
+
+    def register_guest(self, guest_name, guest_arrival, father_id, user_key):
+        if user_key not in self.users_permission_level:
+            return False, 'User session not registered'
+
+        elif self.users_permission_level[user_key] == PermissionLevel.RESIDENT:
+            result = self.guest_controller.register_guest(guest_name, guest_arrival, father_id)
+            if result:
+                return True, 'Guest registered'
+
+            return False, 'Guest could not be registered'
 
         return False, 'User does not have the necessary permission level'
 
@@ -203,10 +240,30 @@ class PermissionManager:
         elif PermissionLevel.EMPLOYEE <= self.users_permission_level[user_key] <= PermissionLevel.SUPER_EMPLOYEE:
             for notification in self.employee_controller.get_employee_by_id(father_id).condominium.notifications:
                 if notification.id == notification_id:
-                    self.notification_controller.remove_notification(notification)
-                    return True, None
+                    result = self.notification_controller.remove_notification(notification)
+                    if result:
+                        return True, None
+
+                    return False, 'Notification could not be deleted'
 
             return None, 'Notification not found'
+
+        return False, 'User does not have the necessary permission level'
+
+    def remove_guest(self, guest_id, father_id, user_key):
+        if user_key not in self.users_permission_level:
+            return False, 'User session not registered'
+
+        elif self.users_permission_level[user_key] == PermissionLevel.RESIDENT:
+            for guest in self.condominium_controller.get_apartment_by_id(father_id).guests:
+                if guest.id == guest_id:
+                    result = self.guest_controller.remove_guest(guest)
+                    if result:
+                        return True, None
+
+                    return False, 'Guest could not be deleted'
+
+            return None, 'Guest not found'
 
         return False, 'User does not have the necessary permission level'
 
