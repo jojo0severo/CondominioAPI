@@ -3,7 +3,7 @@ import secrets
 import datetime
 from functools import wraps
 from flask import Flask, request, session, jsonify, abort, make_response
-from flask_socketio import SocketIO, join_room, disconnect
+from flask_socketio import SocketIO, join_room, disconnect, ConnectionRefusedError
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from flask_limiter import Limiter
@@ -86,24 +86,25 @@ def verify_connection():
     session_key = session.get('KEY')
 
     if not session_key:
-        raise ConnectionRefusedError
+        raise ConnectionRefusedError('User not logged')
 
     key = request.get_json(force=True)['key']
     if key != session_key:
-        raise ConnectionRefusedError
+        blocked_sessions.add(session_key)
+        raise ConnectionRefusedError('User altered the key. Session is being blocked')
 
     elif key not in keys:
-        raise ConnectionRefusedError
+        raise ConnectionRefusedError('Key not registered')
 
-    if not session.get('room') or not session.get('login'):
-        del session['KEY']
-        del session['DATETIME']
-        raise ConnectionRefusedError
+    if not all([dict_key in session for dict_key in ['ID', 'ROOM', 'DATETIME', 'NEW', 'TYPE']]):
+        blocked_sessions.add(session_key)
+        raise ConnectionRefusedError('User altered the session. Session is being blocked')
 
-    if session['login'] != 'resident' and session['login'] != 'employee':
-        raise ConnectionRefusedError
+    if session['TYPE'] != 'resident' and session['TYPE'] != 'employee':
+        blocked_sessions.add(session_key)
+        raise ConnectionRefusedError('User altered the session. Session is being blocked')
 
-    join_room(session['room'] + '_' + session['login'], request.sid)
+    join_room(session['ROOM'] + '_' + session['TYPE'], request.sid)
 
 
 @app.before_request
@@ -124,6 +125,8 @@ def session_configuration():
             del session['ID']
             del session['ROOM']
             del session['DATETIME']
+            del session['NEW']
+            del session['TYPE']
 
             disconnect()
 
@@ -150,6 +153,7 @@ def login_super_user():
                 session['ROOM'] = 'system'
                 session['DATETIME'] = datetime.datetime.now()
                 session['NEW'] = False
+                session['TYPE'] = 'employee'
 
                 handler.register_key('super_user', key)
 
@@ -184,6 +188,7 @@ def login(login_type):
                     session['ID'] = id_
                     session['ROOM'] = room
                     session['DATETIME'] = datetime.datetime.now()
+                    session['TYPE'] = login_type
                     if status == 404:
                         session['NEW'] = True
                     else:
@@ -204,6 +209,7 @@ def login(login_type):
                     session['ID'] = id_
                     session['ROOM'] = room
                     session['DATETIME'] = datetime.datetime.now()
+                    session['TYPE'] = login_type
                     session['NEW'] = False
 
                     handler.register_key(login_type, key)
@@ -233,7 +239,6 @@ def register(registration_type):
 
             if status == 201:
                 session['NEW'] = False
-                session.modified = True
 
         elif registration_type == 'employee':
             status, response = handler.register_employee(data, session['ID'], session['KEY'])
