@@ -26,6 +26,23 @@ class PermissionManager:
         self.service_controller = ServiceController()
         self.event_controller = EventController()
 
+    @staticmethod
+    def _default_answer_decorator(function):
+        def check_default_answer(self, *args, **kwargs):
+            return function(self, *kwargs.values()) or (False, 'User does not have the necessary permission level')
+
+        return check_default_answer
+
+    @staticmethod
+    def _user_key_decorator(function):
+        def check_user_key(self, *args, **kwargs):
+            if kwargs.get('user_key') not in self.users_permission_level:
+                return False, 'User session not registered'
+
+            return function(self, *kwargs.values())
+
+        return check_user_key
+
     def register_key(self, key_type, session_key):
         if key_type == 'employee':
             self.users_permission_level[session_key] = PermissionLevel.EMPLOYEE
@@ -79,14 +96,10 @@ class PermissionManager:
         else:
             return False, 'User password does not match.', None
 
+    @_user_key_decorator
+    @_default_answer_decorator
     def register_resident_user(self, username, hash_password, apartment_id, father_id, user_key):
-        if user_key not in self.users_permission_level:
-            return False, 'User session not registered'
-
-        if self.users_permission_level[user_key] < PermissionLevel.EMPLOYEE:
-            return False, 'User does not have the necessary permission'
-
-        elif PermissionLevel.EMPLOYEE <= self.users_permission_level[user_key] <= PermissionLevel.SUPER_EMPLOYEE:
+        if PermissionLevel.EMPLOYEE <= self.users_permission_level[user_key] <= PermissionLevel.SUPER_EMPLOYEE:
             for tower in self.employee_controller.get_employee_by_id(father_id).condominium:
                 for apartment in tower.apartments:
                     if apartment.id == apartment_id:
@@ -94,32 +107,26 @@ class PermissionManager:
 
             return False, 'User does not have the privileges to do such operation'
 
-        return self.resident_controller.register_user(username, hash_password, apartment_id), None
-
+    @_user_key_decorator
+    @_default_answer_decorator
     def register_resident(self, cpf, name, birthday, photo_location, father_id, user_key):
-        if user_key not in self.users_permission_level:
-            return False, 'User session not registered'
+        if self.users_permission_level[user_key] == PermissionLevel.RESIDENT:
+            resident = self.resident_controller.register_resident(cpf, name, birthday, photo_location, father_id)
 
-        elif self.users_permission_level[user_key] > PermissionLevel.RESIDENT:
-            return False, 'User does not have the necessary permission'
+            if resident is None:
+                return False, 'Resident could not be registered'
 
-        resident = self.resident_controller.register_resident(cpf, name, birthday, photo_location, father_id)
+            else:
+                return True, [resident,
+                              resident.apartment,
+                              resident.apartment.tower,
+                              resident.apartment.tower.condominium,
+                              resident.apartment.tower.condominium.address]
 
-        if resident is None:
-            return False, 'Resident could not be registered'
-
-        else:
-            return True, [resident,
-                          resident.apartment,
-                          resident.apartment.tower,
-                          resident.apartment.tower.condominium,
-                          resident.apartment.tower.condominium.address]
-
-    def register_employee(self, employee_type, username, hash_password, cpf, name, birthday, photo_location, role, father_id, user_key):
-        if user_key not in self.users_permission_level:
-            return False, 'User session not registered'
-
-        elif self.users_permission_level[user_key] == PermissionLevel.SUPER_EMPLOYEE and employee_type == 1:
+    @_user_key_decorator
+    def register_employee(self, employee_type, username, hash_password, cpf, name, birthday, photo_location, role,
+                          father_id, user_key):
+        if self.users_permission_level[user_key] == PermissionLevel.SUPER_EMPLOYEE and employee_type == 1:
             condominium_id = self.employee_controller.get_employee_by_id(father_id).condominium_id
 
             employee = self.employee_controller.register_employee(employee_type,
@@ -134,7 +141,7 @@ class PermissionManager:
                                                                   father_id)
 
         else:
-            return False, 'User does not have the necessary permission'
+            return None
 
         if employee is None:
             return False, 'Employee could not be registered'
@@ -144,20 +151,16 @@ class PermissionManager:
                           employee.condominium,
                           employee.condominium.address]
 
+    @_user_key_decorator
+    @_default_answer_decorator
     def get_employees(self, user_id, user_key):
-        if user_key not in self.users_permission_level:
-            return False, 'User session not registered'
-
-        elif PermissionLevel.EMPLOYEE <= self.users_permission_level[user_key] <= PermissionLevel.SUPER_EMPLOYEE:
+        if PermissionLevel.EMPLOYEE <= self.users_permission_level[user_key] <= PermissionLevel.SUPER_EMPLOYEE:
             return True, self.employee_controller.get_employee_by_id(user_id).condominium.employees
 
-        return False, 'User does not have the necessary permission level'
-
+    @_user_key_decorator
+    @_default_answer_decorator
     def get_residents(self, user_id, apartment_number, father_id, user_key):
-        if user_key not in self.users_permission_level:
-            return False, 'User session not registered'
-
-        elif self.users_permission_level[user_key] == PermissionLevel.RESIDENT:
+        if self.users_permission_level[user_key] == PermissionLevel.RESIDENT:
             apartment = self.condominium_controller.get_apartment_by_id(father_id)
             if apartment is None:
                 return False, 'ID not found'
@@ -165,32 +168,24 @@ class PermissionManager:
             elif apartment.apt_number == apartment_number:
                 return True, apartment.residents
 
-            return False, 'User does not have the necessary permission level'
-
         elif PermissionLevel.EMPLOYEE <= self.users_permission_level[user_key] <= PermissionLevel.SUPER_EMPLOYEE:
             condominium_id = self.employee_controller.get_employee_by_id(user_id).condominium_id
             return True, self.condominium_controller.get_apartment_residents_by_condominium_id_and_apt_number(condominium_id, apartment_number)
 
-        return False, 'User does not have the necessary permission level'
-
+    @_user_key_decorator
+    @_default_answer_decorator
     def get_notifications(self, father_id, user_key):
-        if user_key not in self.users_permission_level:
-            return False, 'User session not registered'
-
-        elif self.users_permission_level[user_key] == PermissionLevel.RESIDENT:
+        if self.users_permission_level[user_key] == PermissionLevel.RESIDENT:
             condominium_id = self.condominium_controller.get_apartment_condominium_id(father_id)
             return True, self.condominium_controller.get_condominium_by_id(condominium_id).notifications
 
         elif PermissionLevel.EMPLOYEE <= self.users_permission_level[user_key] <= PermissionLevel.SUPER_EMPLOYEE:
             return True, self.employee_controller.get_employee_by_id(father_id).condominium.notifications
 
-        return False, 'User does not have the necessary permission level'
-
+    @_user_key_decorator
+    @_default_answer_decorator
     def get_guests(self, apartment_id, father_id, user_key):
-        if user_key not in self.users_permission_level:
-            return False, 'User session not registered'
-
-        elif self.users_permission_level[user_key] == PermissionLevel.RESIDENT:
+        if self.users_permission_level[user_key] == PermissionLevel.RESIDENT:
             return True, self.condominium_controller.get_apartment_by_id(father_id).guests
 
         elif PermissionLevel.EMPLOYEE <= self.users_permission_level[user_key] <= PermissionLevel.SUPER_EMPLOYEE:
@@ -221,27 +216,22 @@ class PermissionManager:
 
             return False, 'Apartment not found'
 
-        return False, 'User does not have the necessary permission level'
-
+    @_user_key_decorator
+    @_default_answer_decorator
     def register_notification(self, notification_type, title, text, finish_date, father_id, user_key):
-        if user_key not in self.users_permission_level:
-            return False, 'User session not registered'
-
-        elif PermissionLevel.EMPLOYEE <= self.users_permission_level[user_key] <= PermissionLevel.SUPER_EMPLOYEE:
+        if PermissionLevel.EMPLOYEE <= self.users_permission_level[user_key] <= PermissionLevel.SUPER_EMPLOYEE:
             condominium_id = self.employee_controller.get_employee_by_id(father_id).condominium_id
-            result = self.notification_controller.register_notification(notification_type, title, text, finish_date, father_id, condominium_id)
+            result = self.notification_controller.register_notification(notification_type, title, text, finish_date,
+                                                                        father_id, condominium_id)
             if result:
                 return True, None
 
             return False, 'Notification could not be registered'
 
-        return False, 'User does not have the necessary permission level'
-
+    @_user_key_decorator
+    @_default_answer_decorator
     def register_guest(self, guest_name, guest_arrival, father_id, user_key):
-        if user_key not in self.users_permission_level:
-            return False, 'User session not registered'
-
-        elif self.users_permission_level[user_key] == PermissionLevel.RESIDENT:
+        if self.users_permission_level[user_key] == PermissionLevel.RESIDENT:
             result = self.guest_controller.register_guest(guest_name, guest_arrival, father_id)
             if result:
                 return True, 'Guest registered'
@@ -256,11 +246,12 @@ class PermissionManager:
             if result:
                 return True, 'Service registered'
 
-    def remove_notification(self, notification_id, father_id, user_key):
-        if user_key not in self.users_permission_level:
-            return False, 'User session not registered'
+            return False, 'Service could not be registered'
 
-        elif PermissionLevel.EMPLOYEE <= self.users_permission_level[user_key] <= PermissionLevel.SUPER_EMPLOYEE:
+    @_user_key_decorator
+    @_default_answer_decorator
+    def remove_notification(self, notification_id, father_id, user_key):
+        if PermissionLevel.EMPLOYEE <= self.users_permission_level[user_key] <= PermissionLevel.SUPER_EMPLOYEE:
             for notification in self.employee_controller.get_employee_by_id(father_id).condominium.notifications:
                 if notification.id == notification_id:
                     result = self.notification_controller.remove_notification(notification)
@@ -271,13 +262,10 @@ class PermissionManager:
 
             return None, 'Notification not found'
 
-        return False, 'User does not have the necessary permission level'
-
+    @_user_key_decorator
+    @_default_answer_decorator
     def remove_guest(self, guest_id, father_id, user_key):
-        if user_key not in self.users_permission_level:
-            return False, 'User session not registered'
-
-        elif self.users_permission_level[user_key] == PermissionLevel.RESIDENT:
+        if self.users_permission_level[user_key] == PermissionLevel.RESIDENT:
             for guest in self.condominium_controller.get_apartment_by_id(father_id).guests:
                 if guest.id == guest_id:
                     result = self.guest_controller.remove_guest(guest)
