@@ -109,6 +109,20 @@ class JSONFormatter:
 
         return {'status': status['failure'], 'result': False, 'event': 'Failure', 'message': info, 'data': {}}
 
+    def format_services(self, result, info, status):
+        if result:
+            if not info:
+                return {'status': status['empty'], 'result': False, 'event': 'Empty', 'message': 'No service found',
+                        'data': []}
+
+            response = {'status': status['success'], 'result': True, 'event': 'Success', 'message': '', 'data': []}
+            for service in info:
+                response['data'].append(self.format_service(service))
+
+            return response
+
+        return {'status': status['failure'], 'result': False, 'event': 'Failure', 'message': info, 'data': {}}
+
     @staticmethod
     def response(status, event, message=''):
         return {'status': status, 'result': status in [200, 201], 'event': event, 'message': message}
@@ -118,7 +132,7 @@ class JSONFormatter:
         return {'id': base64.urlsafe_b64encode(str(resident.id).encode('ascii')).decode('ascii'),
                 'CPF': resident.cpf,
                 'Name': resident.name,
-                'Birthday': resident.birthday.strftime("%Y-%m-%d"),
+                'Birthday': resident.birthday.strftime('%Y-%m-%d'),
                 'PhotoLocation': resident.photo_location}
 
     @staticmethod
@@ -126,7 +140,7 @@ class JSONFormatter:
         return {'id': base64.urlsafe_b64encode(str(employee.id).encode('ascii')).decode('ascii'),
                 'CPF': employee.cpf,
                 'Name': employee.name,
-                'Birthday': employee.birthday.strftime("%Y-%m-%d"),
+                'Birthday': employee.birthday.strftime('%Y-%m-%d'),
                 'Role': employee.role,
                 'PhotoLocation': employee.photo_location}
 
@@ -159,3 +173,9 @@ class JSONFormatter:
     def format_guest(guest):
         return {'Name': guest.name,
                 'Arrival': guest.arrival}
+
+    @staticmethod
+    def format_service(service):
+        return {'ServiceName': service.name,
+                'EmployeeName': service.employee,
+                'Arrival': service.arrival.strftime('%Y-%m-%d %H:%M')}

@@ -337,14 +337,14 @@ def guest():
 def service():
     data = request.get_json(force=True)
     if request.method == 'GET':
-        response = handler.get_services(data)
+        response = handler.get_services(data, session['ID'], session['KEY'])
 
     elif request.method == 'POST':
-        response = handler.register_service(data)
+        response = handler.register_service(data, session['ID'], session['KEY'])
         socket.emit('service', {'type': 'registration', 'data': data}, room=session['ROOM'] + '_employee')
 
     else:
-        response = handler.remove_service(data)
+        response = handler.remove_service(data, session['ID'], session['KEY'])
         socket.emit('service', {'type': 'deletion', 'data': data}, room=session['ROOM'] + '_employee')
 
     return response, 204

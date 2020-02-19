@@ -204,6 +204,23 @@ class PermissionManager:
 
             return False, 'Apartment not found'
 
+    @_user_key_decorator
+    @_default_answer_decorator
+    def get_services(self, apartment_id, father_id, user_key):
+        if self.users_permission_level[user_key] == PermissionLevel.RESIDENT:
+            return True, self.condominium_controller.get_apartment_by_id(father_id).services
+
+        elif PermissionLevel.EMPLOYEE <= self.users_permission_level[user_key] <= PermissionLevel.SUPER_EMPLOYEE:
+            if apartment_id is None:
+                return False, 'User does not have the privileges to do such operation'
+
+            for tower in self.employee_controller.get_employee_by_id(father_id).condominium:
+                for apartment in tower.apartments:
+                    if apartment.id == apartment_id:
+                        return True, apartment.services
+
+            return False, 'Apartment not found'
+
         return False, 'User does not have the necessary permission level'
 
     def register_notification(self, notification_type, title, text, finish_date, father_id, user_key):
@@ -231,7 +248,13 @@ class PermissionManager:
 
             return False, 'Guest could not be registered'
 
-        return False, 'User does not have the necessary permission level'
+    @_user_key_decorator
+    @_default_answer_decorator
+    def register_service(self, service_name, employee_name, service_arrival, father_id, user_key):
+        if self.users_permission_level[user_key] == PermissionLevel.RESIDENT:
+            result = self.service_controller.register_service(service_name, employee_name, service_arrival, father_id)
+            if result:
+                return True, 'Service registered'
 
     def remove_notification(self, notification_id, father_id, user_key):
         if user_key not in self.users_permission_level:
@@ -265,7 +288,19 @@ class PermissionManager:
 
             return None, 'Guest not found'
 
-        return False, 'User does not have the necessary permission level'
+    @_user_key_decorator
+    @_default_answer_decorator
+    def remove_service(self, service_id, father_id, user_key):
+        if self.users_permission_level[user_key] == PermissionLevel.RESIDENT:
+            for service in self.condominium_controller.get_apartment_by_id(father_id).services:
+                if service.id == service_id:
+                    result = self.service_controller.remove_service(service)
+                    if result:
+                        return True, None
+
+                    return False, 'Service could not be deleted'
+
+            return None, 'Service not found'
 
     def drop_session(self, session_key):
         if session_key not in self.users_permission_level:
