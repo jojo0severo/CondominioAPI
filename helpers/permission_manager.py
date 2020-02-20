@@ -218,6 +218,54 @@ class PermissionManager:
 
     @_user_key_decorator
     @_default_answer_decorator
+    def get_rules(self, father_id, user_key):
+        if self.users_permission_level[user_key] == PermissionLevel.RESIDENT:
+            return True, self.condominium_controller.get_apartment_by_id(father_id).tower.condominium.rules
+
+        elif PermissionLevel.EMPLOYEE <= self.users_permission_level[user_key] <= PermissionLevel.SUPER_EMPLOYEE:
+            return True, self.employee_controller.get_employee_by_id(father_id).condominium.rules
+
+    @_user_key_decorator
+    @_default_answer_decorator
+    def get_apartment_events(self, apartment_id, father_id, user_key):
+        if self.users_permission_level[user_key] == PermissionLevel.RESIDENT:
+            return True, self.condominium_controller.get_apartment_by_id(father_id).events
+
+        elif PermissionLevel.EMPLOYEE <= self.users_permission_level[user_key] <= PermissionLevel.SUPER_EMPLOYEE:
+            if apartment_id is None:
+                return False, 'User does not have the privileges to do such operation'
+
+            for tower in self.employee_controller.get_employee_by_id(father_id).condominium:
+                for apartment in tower.apartments:
+                    if apartment.id == apartment_id:
+                        return True, apartment.events
+
+            return False, 'Apartment not found'
+
+    @_user_key_decorator
+    @_default_answer_decorator
+    def get_all_events(self, start, end, father_id, user_key):
+        if self.users_permission_level[user_key] == PermissionLevel.RESIDENT:
+            condominium_id = self.condominium_controller.get_apartment_by_id(father_id).tower.apartment_id
+            return True, self.event_controller.get_condominium_events(start, end, condominium_id)
+
+        elif PermissionLevel.EMPLOYEE <= self.users_permission_level[user_key] <= PermissionLevel.SUPER_EMPLOYEE:
+            condominium_id = self.employee_controller.get_employee_by_id(father_id).condominium_id
+            return True, self.event_controller.get_condominium_events(start, end, condominium_id)
+
+    @_user_key_decorator
+    @_default_answer_decorator
+    def get_event_types(self, father_id, user_key):
+        if self.users_permission_level[user_key] == PermissionLevel.RESIDENT:
+            condominium_id = self.condominium_controller.get_apartment_by_id(father_id).tower.apartment_id
+            return True, self.event_controller.get_condominium_event_types(condominium_id)
+
+        elif PermissionLevel.EMPLOYEE <= self.users_permission_level[user_key] <= PermissionLevel.SUPER_EMPLOYEE:
+            condominium_id = self.employee_controller.get_employee_by_id(father_id).condominium_id
+            return True, self.event_controller.get_condominium_event_types(condominium_id)
+
+    @_user_key_decorator
+    @_default_answer_decorator
     def register_notification(self, notification_type, title, text, finish_date, father_id, user_key):
         if PermissionLevel.EMPLOYEE <= self.users_permission_level[user_key] <= PermissionLevel.SUPER_EMPLOYEE:
             condominium_id = self.employee_controller.get_employee_by_id(father_id).condominium_id
@@ -247,6 +295,26 @@ class PermissionManager:
                 return True, 'Service registered'
 
             return False, 'Service could not be registered'
+
+    @_user_key_decorator
+    @_default_answer_decorator
+    def register_rule(self, text, father_id, user_key):
+        if self.users_permission_level[user_key] == PermissionLevel.RESIDENT:
+            result = self.rule_controller.register_rule(text, father_id, self.employee_controller.get_employee_by_id(father_id).condominium_id)
+            if result:
+                return True, 'Rule registered'
+
+            return False, 'Rule could not be registered'
+
+    @_user_key_decorator
+    @_default_answer_decorator
+    def register_event(self, start, end, event_type_id, father_id, user_key):
+        if self.users_permission_level[user_key] == PermissionLevel.RESIDENT:
+            result = self.event_controller.register_event(start, end, event_type_id, father_id)
+            if result:
+                return True, 'Event registered'
+
+            return False, 'Event could not be registered'
 
     @_user_key_decorator
     @_default_answer_decorator
@@ -289,6 +357,34 @@ class PermissionManager:
                     return False, 'Service could not be deleted'
 
             return None, 'Service not found'
+
+    @_user_key_decorator
+    @_default_answer_decorator
+    def remove_rule(self, rule_id, father_id, user_key):
+        if self.users_permission_level[user_key] == PermissionLevel.RESIDENT:
+            for rule in self.employee_controller.get_employee_by_id(father_id).condominium.rules:
+                if rule.id == rule_id:
+                    result = self.rule_controller.remove_rule(rule)
+                    if result:
+                        return True, None
+
+                    return False, 'Rule could not be deleted'
+
+            return None, 'Rule not found'
+
+    @_user_key_decorator
+    @_default_answer_decorator
+    def remove_event(self, event_id, father_id, user_key):
+        if self.users_permission_level[user_key] == PermissionLevel.RESIDENT:
+            for event in self.condominium_controller.get_apartment_by_id(father_id).events:
+                if event.id == event_id:
+                    result = self.event_controller.remove_event(event)
+                    if result:
+                        return True, None
+
+                    return False, 'Event could not be deleted'
+
+            return None, 'Event not found'
 
     def drop_session(self, session_key):
         if session_key not in self.users_permission_level:

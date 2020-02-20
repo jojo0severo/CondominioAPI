@@ -123,6 +123,34 @@ class JSONFormatter:
 
         return {'status': status['failure'], 'result': False, 'event': 'Failure', 'message': info, 'data': {}}
 
+    def format_rules(self, result, info, status):
+        if result:
+            if not info:
+                return {'status': status['empty'], 'result': False, 'event': 'Empty', 'message': 'No rule found',
+                        'data': []}
+
+            response = {'status': status['success'], 'result': True, 'event': 'Success', 'message': '', 'data': []}
+            for rule in info:
+                response['data'].append({'rule': self.format_rule(rule), 'author': self.format_employee(rule.author)})
+
+            return response
+
+        return {'status': status['failure'], 'result': False, 'event': 'Failure', 'message': info, 'data': {}}
+
+    def format_events(self, result, info, status):
+        if result:
+            if not info:
+                return {'status': status['empty'], 'result': False, 'event': 'Empty', 'message': 'No event found',
+                        'data': []}
+
+            response = {'status': status['success'], 'result': True, 'event': 'Success', 'message': '', 'data': []}
+            for event in info:
+                response['data'].append(self.format_event(event))
+
+            return response
+
+        return {'status': status['failure'], 'result': False, 'event': 'Failure', 'message': info, 'data': {}}
+
     @staticmethod
     def response(status, event, message=''):
         return {'status': status, 'result': status in [200, 201], 'event': event, 'message': message}
@@ -179,3 +207,13 @@ class JSONFormatter:
         return {'ServiceName': service.name,
                 'EmployeeName': service.employee,
                 'Arrival': service.arrival.strftime('%Y-%m-%d %H:%M')}
+
+    @staticmethod
+    def format_rule(rule):
+        return {'Text': rule.text}
+
+    @staticmethod
+    def format_event(event):
+        return {'Name': event.event_type.name,
+                'Start': event.start_datetime,
+                'End': event.end_datetime}

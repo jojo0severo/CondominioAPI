@@ -371,22 +371,36 @@ def rule():
     return response, 204
 
 
-@app.route('/event/<user_type>/<search_type>', methods=['GET', 'POST', 'DELETE'])
+@app.route('/event_type', methods=['GET'])
 @session_decorator
 @first_login_decorator
-def event(user_type, search_type):
+def event_type():
+    try:
+        status, response = handler.get_event_types(session['ID'], session['KEY'])
+
+    except json.JSONDecodeError:
+        status = 422
+        response = {'status': 422, 'result': False, 'event': 'Unable to process the data, not JSON formatted', 'data': {}}
+
+    return response, status
+
+
+@app.route('/event', methods=['GET', 'POST', 'DELETE'])
+@session_decorator
+@first_login_decorator
+def event():
     try:
         data = request.get_json(force=True)
         if request.method == 'GET':
-            status, response = handler.get_events(data, user_type, search_type, session['KEY'])
+            status, response = handler.get_events(data, session['ID'], session['KEY'])
 
         elif request.method == 'POST':
-            status, response = handler.register_event(data)
+            status, response = handler.register_event(data, session['ID'], session['KEY'])
             socket.emit('event', {'type': 'registration', 'data': data}, room=session['ROOM'] + '_resident')
             socket.emit('event', {'type': 'registration', 'data': data}, room=session['ROOM'] + '_employee')
 
         else:
-            status, response = handler.remove_event(data)
+            status, response = handler.remove_event(data, session['ID'], session['KEY'])
             socket.emit('event', {'type': 'deletion', 'data': data}, room=session['ROOM'] + '_resident')
             socket.emit('event', {'type': 'deletion', 'data': data}, room=session['ROOM'] + '_employee')
 

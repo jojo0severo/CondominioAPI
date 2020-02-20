@@ -28,7 +28,7 @@ class Event(db.Model):
                                                     lazy=True,
                                                     cascade='all, delete',
                                                     primaryjoin='and_(Event.event_type_id == EventType.id, Event.active == 1)'),
-                                 lazy=True)
+                                 lazy=False)
 
     def __repr__(self):
         return f'Event(id={self.id}, ' \

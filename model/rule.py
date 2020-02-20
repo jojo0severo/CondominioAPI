@@ -15,7 +15,7 @@ class Rule(db.Model):
 
     author = db.relationship('Employee',
                              backref=db.backref('rules', lazy=True, cascade='all, delete'),
-                             lazy=True)
+                             lazy=False)
 
     condominium = db.relationship('Condominium',
                                   backref=db.backref('rules', lazy=True, cascade='all, delete'),

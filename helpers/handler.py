@@ -191,6 +191,48 @@ class Handler:
     @key_error_decorator
     @value_error_decorator
     @type_error_decorator
+    def get_rules(self, father_id, user_key):
+        result, info = self.permission_manager.get_rules(father_id, user_key)
+        response = self.formatter.format_rules(result, info, {'success': 200, 'failure': 403, 'empty': 404})
+
+        return response['status'], response
+
+    @runtime_error_decorator
+    @key_error_decorator
+    @value_error_decorator
+    @type_error_decorator
+    def get_events(self, data, father_id, user_key):
+        apartment_id = data.get('apartment_id')
+        if apartment_id is not None:
+            try:
+                apartment_id = int(base64.urlsafe_b64decode(apartment_id).decode('ascii'))
+                result, info = self.permission_manager.get_apartment_events(apartment_id, father_id, user_key)
+            except ValueError:
+                return 190, self.formatter.response(400, 'Failure', 'Incorrect ID format informed')
+
+        else:
+            start = data['start']
+            end = data['end']
+            result, info = self.permission_manager.get_all_events(start, end, father_id, user_key)
+
+        response = self.formatter.format_events(result, info, {'success': 200, 'failure': 403, 'empty': 404})
+
+        return response['status'], response
+
+    @runtime_error_decorator
+    @key_error_decorator
+    @value_error_decorator
+    @type_error_decorator
+    def get_event_types(self, father_id, user_key):
+        result, info = self.permission_manager.get_event_types(father_id, user_key)
+        response = self.formatter.format_events(result, info, {'success': 200, 'failure': 403, 'empty': 404})
+
+        return response['status'], response
+
+    @runtime_error_decorator
+    @key_error_decorator
+    @value_error_decorator
+    @type_error_decorator
     def register_notification(self, data, father_id, user_key):
         notification_type = int(data['notification_type'])
         title = data['title']
@@ -227,6 +269,34 @@ class Handler:
         service_arrival = data['arrival']
 
         result, info = self.permission_manager.register_service(service_name, employee_name, service_arrival, father_id, user_key)
+        if result:
+            return 201, self.formatter.response(201, 'Success')
+
+        return 400, self.formatter.response(400, 'Failure', info)
+
+    @runtime_error_decorator
+    @key_error_decorator
+    @value_error_decorator
+    @type_error_decorator
+    def register_rule(self, data, father_id, user_key):
+        text = data['name']
+
+        result, info = self.permission_manager.register_rule(text, father_id, user_key)
+        if result:
+            return 201, self.formatter.response(201, 'Success')
+
+        return 400, self.formatter.response(400, 'Failure', info)
+
+    @runtime_error_decorator
+    @key_error_decorator
+    @value_error_decorator
+    @type_error_decorator
+    def register_event(self, data, father_id, user_key):
+        start = data['start']
+        end = data['end']
+        event_type_id = data['event_type_id']
+
+        result, info = self.permission_manager.register_event(start, end, event_type_id, father_id, user_key)
         if result:
             return 201, self.formatter.response(201, 'Success')
 
@@ -281,6 +351,44 @@ class Handler:
             return 190, self.formatter.response(400, 'Failure', 'Incorrect ID format informed')
 
         result, info = self.permission_manager.remove_service(service_id, father_id, user_key)
+        if result is True:
+            return 201, self.formatter.response(201, 'Success')
+
+        elif result is None:
+            return 404, self.formatter.response(404, 'Failure', info)
+
+        return 400, self.formatter.response(400, 'Failure', info)
+
+    @runtime_error_decorator
+    @key_error_decorator
+    @value_error_decorator
+    @type_error_decorator
+    def remove_rule(self, data, father_id, user_key):
+        try:
+            rule_id = int(base64.urlsafe_b64decode(data['rule_id']).decode('ascii'))
+        except ValueError:
+            return 190, self.formatter.response(400, 'Failure', 'Incorrect ID format informed')
+
+        result, info = self.permission_manager.remove_rule(rule_id, father_id, user_key)
+        if result is True:
+            return 201, self.formatter.response(201, 'Success')
+
+        elif result is None:
+            return 404, self.formatter.response(404, 'Failure', info)
+
+        return 400, self.formatter.response(400, 'Failure', info)
+
+    @runtime_error_decorator
+    @key_error_decorator
+    @value_error_decorator
+    @type_error_decorator
+    def remove_event(self, data, father_id, user_key):
+        try:
+            event_id = int(base64.urlsafe_b64decode(data['event_id']).decode('ascii'))
+        except ValueError:
+            return 190, self.formatter.response(400, 'Failure', 'Incorrect ID format informed')
+
+        result, info = self.permission_manager.remove_event(event_id, father_id, user_key)
         if result is True:
             return 201, self.formatter.response(201, 'Success')
 
