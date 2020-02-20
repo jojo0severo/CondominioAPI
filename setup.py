@@ -131,7 +131,7 @@ def session_configuration():
             disconnect()
 
 
-@app.route(f'/{super_user_url}', methods=['POST'])
+@app.route(f'/login/{super_user_url}', methods=['POST'])
 def login_super_user():
     if session.get('KEY') is not None:
         status = 409
@@ -215,8 +215,8 @@ def login(login_type):
                     handler.register_key(login_type, key)
     
             else:
-                status = 400
-                response = {'status': 400, 'result': False, 'event': 'Invalid login type', 'data': {}}
+                status = 404
+                response = {'status': 404, 'result': False, 'event': 'Unknown login type', 'data': {}}
                 
         except json.JSONDecodeError:
             status = 422
@@ -337,7 +337,7 @@ def guest():
 def service():
     data = request.get_json(force=True)
     if request.method == 'GET':
-        response = handler.get_services(data, session['ID'], session['KEY'])
+        response = handler.get_services(session['ID'], session['KEY'])
 
     elif request.method == 'POST':
         response = handler.register_service(data, session['ID'], session['KEY'])
@@ -421,22 +421,5 @@ if __name__ == '__main__':
 
     handler = Handler()
     print(super_user_url)
-
-    # import database_cleaner
-    # import bcrypt
-    # handler.permission_manager.register_key('super_user', 1)
-    # handler.permission_manager.register_key('resident', 2)
-    #
-    # print('\nINSERTIONS\n')
-    # print(handler.permission_manager.address_controller.register_address_by_names('rua', 'bairro', 'cidade', 'estado', 'pais'))
-    # print(handler.permission_manager.condominium_controller.register_condominium('condominio', 23, None, 1))
-    # print(handler.permission_manager.condominium_controller.register_tower('t1', 1))
-    # print(handler.permission_manager.condominium_controller.register_apartment(100, 1))
-    # print(handler.permission_manager.condominium_controller.register_apartment(200, 1))
-    #
-    # print(handler.permission_manager.register_employee(2, 'employee', bcrypt.hashpw('password'.encode('utf-8'), bcrypt.gensalt()), 'cpf', 'name', '1999-06-11', None, 'role', 1, 1))
-    # print(handler.permission_manager.register_resident_user('resident', bcrypt.hashpw('password'.encode('utf-8'), bcrypt.gensalt()), 1, 1, 1))
-    # print(handler.permission_manager.register_resident('cpf', 'name', '1999-06-11', None, 1, 2))
-    # print(handler.permission_manager.notification_controller.register_notification(1, 'Titulo', 'Texto', '1999-06-11', 1, 1))
 
     socket.run(app)

@@ -12,7 +12,7 @@ class Event(db.Model):
     start_datetime = db.Column(db.DateTime, nullable=False)
     end_datetime = db.Column(db.DateTime, nullable=False)
     active = db.Column(db.SmallInteger, default=1)
-    event_type_id = db.Column(db.Integer, db.ForeignKey('eventtype.id', ondelete='CASCADE'), nullable=False)
+    event_type_id = db.Column(db.Integer, db.ForeignKey('event_type.id', ondelete='CASCADE'), nullable=False)
     apartment_id = db.Column(db.Integer, db.ForeignKey('apartment.id', ondelete='CASCADE'), nullable=False)
 
     apartment = db.relationship('Apartment',

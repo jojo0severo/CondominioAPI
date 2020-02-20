@@ -1,9 +1,10 @@
 from model.notification import Notification
 from model.employee import Employee
-from helpers.permission_manager import PermissionManager
+from helpers.handler import Handler
 from setup import db
 import time
 import datetime
+import bcrypt
 
 
 def performance_test():
@@ -93,30 +94,25 @@ if __name__ == '__main__':
     #
     # exit()
 
-    a = PermissionManager()
-
-    a.register_resident_session('sistema', 1)
-    a.register_employee_session('sistema', 1)
+    handler = Handler()
+    handler.permission_manager.register_key('super_user', 1)
+    handler.permission_manager.register_key('resident', 2)
 
     print('\nINSERTIONS\n')
-    print(a.register_address_by_names('rua', 'bairro', 'cidade', 'estado', 'pais'))
-    # print(a.register_address_by_names('rua1', 'bairro', 'cidade', 'estado', 'pais'))
-    # print(a.register_address_by_names('rua', 'bairro', 'cidade1', 'estado', 'pais'))
-    # print(a.register_address_by_names('rua1', 'bairro', 'cidade1', 'estado', 'pais'))
-    print(a.register_condominium('condominio', 23, None, 1))
-    print(a.register_tower('t1', 1))
-    # print(a.register_tower('t2', 1))
-    print(a.register_apartment(100, 1))
-    # print(a.register_apartment(101, 1))
-    # print(a.register_apartment(100, 2))
-    # print(a.register_apartment(101, 2))
+    print(handler.permission_manager.address_controller.register_address_by_names('rua', 'bairro', 'cidade', 'estado', 'pais'))
+    print(handler.permission_manager.condominium_controller.register_condominium('condominio', 23, None, 1))
+    print(handler.permission_manager.condominium_controller.register_tower('t1', 1))
+    print(handler.permission_manager.condominium_controller.register_apartment(100, 1))
+    print(handler.permission_manager.condominium_controller.register_apartment(200, 1))
 
-    print(a.register_resident('username', 'password', 'cpf', 'name', '1999-06-11', None, 1))
-    print(a.register_employee('username', 'password', 'cpf', 'name', '1999-06-11', None, 'role', 1))
+    print(handler.permission_manager.register_employee(2, 'employee', bcrypt.hashpw('password'.encode('utf-8'), bcrypt.gensalt()), 'cpf', 'name', '1999-06-11', None, 'role', 1, 1))
+    print(handler.permission_manager.register_resident_user('resident', bcrypt.hashpw('password'.encode('utf-8'), bcrypt.gensalt()), 1, 1, 1))
+    print(handler.permission_manager.register_resident('cpf', 'name', '1999-06-11', None, 1, 2))
+    print(handler.permission_manager.notification_controller.register_notification(1, 'Titulo', 'Texto', '1999-06-11', 1, 1))
 
     performance_test()
 
-    # print(a.register_notification(1, 'Corredor T1', 'Corredor da torre 1 está interdidato até semana que vem', '2020-02-10', 1))
+    # print(a.register_notification(1, 'Corredor T1', 'Corredor da torre 1 está interdidato', '2020-02-10', 1))
     # print(a.register_rule('Proibido fumar dentro das torres e apartamentos', 1))
     # print(a.register_guest('joaozinho', '2020-02-03 14:00', 1))
     # print(a.register_service('encanador', 'pedro alberto', '2020-02-03 14:00', 1))
