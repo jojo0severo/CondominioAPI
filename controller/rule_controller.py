@@ -7,9 +7,9 @@ class RuleController:
     def get_rule_by_id(self, rule_id):
         return Rule.query.get(rule_id)
 
-    def register_rule(self, text, condominium_id):
+    def register_rule(self, text, employee_id, condominium_id):
         try:
-            rule = Rule(text=text, condominium_id=condominium_id)
+            rule = Rule(text=text, employee_id=employee_id, condominium_id=condominium_id)
             db.session.add(rule)
             db.session.commit()
 
