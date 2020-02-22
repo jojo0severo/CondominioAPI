@@ -6,25 +6,24 @@ from sqlalchemy import exc
 
 
 def parse_tower_list(tower_list_obj, condominium_id):
-    tower_obj = {}
-
     if 'apartments' in tower_list_obj:
-        tower_obj['apartments'] = tower_list_obj['apartments']
+        tower_obj = {'apartments': tower_list_obj['apartments']}
     else:
-        tower_obj['floors'] = tower_list_obj['floors']
-        tower_obj['apartments_by_floor'] = tower_list_obj['apartments_by_floor']
-        tower_obj['start'] = tower_list_obj['start']
-        tower_obj['end'] = tower_list_obj['end']
+        tower_obj = {
+            'floors': tower_list_obj['floors'],
+            'apartments_by_floor': tower_list_obj['apartments_by_floor'],
+            'start': tower_list_obj['start']
+        }
 
     for tower_name in tower_list_obj["names"]:
         parse_tower(tower_obj, tower_name, condominium_id)
 
 
 def parse_tower(tower_obj, tower_name, condominium_id):
-    tower = Tower(tower_name, condominium_id)
+    tower = Tower(name=tower_name, condominium_id=condominium_id)
     db.session.add(tower)
 
-    parse_apartments(tower_obj, tower.id)
+    parse_apartments(tower_obj, 1)
 
 
 def parse_apartments(tower_obj, tower_id):
@@ -33,14 +32,16 @@ def parse_apartments(tower_obj, tower_id):
             db.session.add(Apartment(apt_number=i, tower_id=tower_id))
 
     else:
-        for i in range(tower_obj['start'], tower_obj['end']):
-            pass
+        for i in range(tower_obj['floors']):
+            apt_number = tower_obj['start'] + (i * tower_obj['start'])
+            for j in range(tower_obj['apartments_by_floor'] + 1):
+                db.session.add(Apartment(apt_number=apt_number + j, tower_id=tower_id))
 
 
 def build(json_structure):
     for condominium in json_structure:
 
-        condominium = Condominium(name=condominium)
+        condominium = Condominium(name=condominium, address_id=1)
         db.session.add(condominium)
 
         condominium_obj = json_structure[condominium]
