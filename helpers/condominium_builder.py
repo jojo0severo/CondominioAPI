@@ -1,8 +1,12 @@
+from model.country import Country
+from model.state import State
+from model.city import City
+from model.address import Address
 from model.condominium import Condominium
 from model.tower import Tower
 from model.apartment import Apartment
 from setup import db
-from sqlalchemy import exc
+from sqlalchemy import exc, and_
 
 
 def parse_tower_list(tower_list_obj, condominium_id):

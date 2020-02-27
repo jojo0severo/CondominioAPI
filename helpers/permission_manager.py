@@ -7,8 +7,9 @@ from controller.notification_controller import NotificationController
 from controller.rule_controller import RuleController
 from controller.guest_controller import GuestController
 from controller.service_controller import ServiceController
-from helpers.permission_levels import PermissionLevel
 from controller.event_controller import EventController
+from helpers.permission_levels import PermissionLevel
+from helpers.condominium_builder import build
 import bcrypt
 
 
