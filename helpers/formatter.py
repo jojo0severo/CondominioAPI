@@ -157,7 +157,7 @@ class JSONFormatter:
 
     @staticmethod
     def format_resident(resident):
-        return {'id': base64.urlsafe_b64encode(str(resident.id).encode('ascii')).decode('ascii'),
+        return {'ID': base64.urlsafe_b64encode(str(resident.id).encode('ascii')).decode('ascii'),
                 'CPF': resident.cpf,
                 'Name': resident.name,
                 'Birthday': resident.birthday.strftime('%Y-%m-%d'),
@@ -165,7 +165,7 @@ class JSONFormatter:
 
     @staticmethod
     def format_employee(employee):
-        return {'id': base64.urlsafe_b64encode(str(employee.id).encode('ascii')).decode('ascii'),
+        return {'ID': base64.urlsafe_b64encode(str(employee.id).encode('ascii')).decode('ascii'),
                 'CPF': employee.cpf,
                 'Name': employee.name,
                 'Birthday': employee.birthday.strftime('%Y-%m-%d'),
