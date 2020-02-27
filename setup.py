@@ -1,11 +1,11 @@
 from flask_limiter.util import get_remote_address
 from flask_limiter import Limiter
 from flask_cors import CORS
-from flask_session import Session
+# from flask_session import Session
 from flask_sqlalchemy import SQLAlchemy
 from flask_socketio import SocketIO, join_room, disconnect, ConnectionRefusedError
 from flask import Flask, request, session, jsonify, abort, make_response
-import redis
+# import redis
 from functools import wraps
 from urllib.parse import urlparse
 import datetime
@@ -13,10 +13,10 @@ import secrets
 import json
 import os
 
-redis_password = urlparse(os.environ.get('REDIS_PASSWORD'))
+# redis_password = urlparse(os.environ.get('REDIS_PASSWORD'))
 db_url = os.environ.get('DATABASE_URL')
 
-redis_db = redis.StrictRedis(host='127.0.0.1', port=6379, db=0, password=redis_password)
+# redis_db = redis.StrictRedis(host='127.0.0.1', port=6379, db=0, password=redis_password)
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = secrets.token_urlsafe(30)
@@ -27,12 +27,12 @@ app.config['SQLALCHEMY_DATABASE_URI'] = f'postgresql://{db_url}'
 
 app.config['CORS_HEADERS'] = 'Content-Type'
 
-app.config['SESSION_TYPE'] = 'redis'
-app.config['SESSION_REDIS'] = redis_db
+# app.config['SESSION_TYPE'] = 'redis'
+# app.config['SESSION_REDIS'] = redis_db
 # app.config['SESSION_FILE_THRESHOLD'] = 10000
 app.config['PERMANENT_SESSION_LIFETIME'] = datetime.timedelta(days=2)
 
-Session(app)
+# Session(app)
 CORS(app)
 limiter = Limiter(app, key_func=get_remote_address, default_limits=['1000/day', '400/hour', '30/minute', '2/second'])
 
