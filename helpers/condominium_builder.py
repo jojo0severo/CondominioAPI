@@ -50,7 +50,7 @@ def build_address(condominium_obj):
 
     except exc.IntegrityError:
         db.session.rollback()
-        country = Country.query.filter_by(name=condominium_obj['CountryName'])
+        country = Country.query.filter_by(name=condominium_obj['CountryName']).first()
 
     try:
         state = State(name=condominium_obj['StateName'], country_id=country.id)
@@ -59,7 +59,7 @@ def build_address(condominium_obj):
 
     except exc.IntegrityError:
         db.session.rollback()
-        state = State.query.filter(and_(State.name == condominium_obj['StateName'], State.country_id == country.id))
+        state = State.query.filter(and_(State.name == condominium_obj['StateName'], State.country_id == country.id)).first()
 
     try:
         city = City(name=condominium_obj['CityName'], state_id=state.id)
@@ -68,7 +68,7 @@ def build_address(condominium_obj):
 
     except exc.IntegrityError:
         db.session.rollback()
-        city = City.query.filter(and_(City.name == condominium_obj['CityName'], City.state_id == state.id))
+        city = City.query.filter(and_(City.name == condominium_obj['CityName'], City.state_id == state.id)).first()
 
     try:
         address = Address(street_name=condominium_obj['StreetName'], neighbourhood=condominium_obj['Neighbourhood'], city_id=city.id)
