@@ -75,6 +75,17 @@ class Handler:
     @key_error_decorator
     @value_error_decorator
     @type_error_decorator
+    def build_condominium_schema(self, schema, user_key):
+        result, info = self.permission_manager.build_condominium_schema(schema, user_key)
+        if result:
+            return 200, self.formatter.response(200, 'Success')
+
+        return 400, self.formatter.response(400, 'Failure', 'Condominium could not be built')
+
+    @runtime_error_decorator
+    @key_error_decorator
+    @value_error_decorator
+    @type_error_decorator
     def login_resident(self, data):
         username = data['username']
         password = data['password']

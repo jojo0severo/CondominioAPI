@@ -70,6 +70,12 @@ class PermissionManager:
 
         return False, 'User passowrd does not match', None
 
+    @_user_key_decorator
+    @_default_answer_decorator
+    def build_condominium_schema(self, schema, user_key):
+        if self.users_permission_level[user_key] == PermissionLevel.SYSTEM:
+            return build(schema), None
+
     def login_resident(self, username, password):
         user = self.resident_controller.do_login(username)
         if user is None:

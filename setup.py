@@ -164,6 +164,20 @@ def login_super_user():
     return jsonify(response), status
 
 
+@app.route(f'/condominium/{super_user_url}', methods=['POST'])
+@session_decorator
+def register_condominium_super_user():
+    try:
+        condominium_schema = request.get_json(force=True)['schema']
+        status, response = handler.build_condominium_schema(condominium_schema, session['KEY'])
+
+    except json.JSONDecodeError:
+        status = 422
+        response = {'status': 422, 'result': False, 'event': 'Unable to process the data, not JSON formatted', 'data': {}}
+
+    return jsonify(response), status
+
+
 @app.route('/login/<login_type>', methods=['POST'])
 def login(login_type):
     login_type = str(login_type).lower()
