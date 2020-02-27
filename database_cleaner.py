@@ -1,5 +1,3 @@
-from setup import db
-
 from model.super_user import SuperUser
 from model.notification import Notification
 from model.rule import Rule
@@ -19,6 +17,7 @@ from model.address import Address
 from model.city import City
 from model.state import State
 from model.country import Country
+from setup import db
 
 
 db.drop_all()

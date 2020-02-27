@@ -431,6 +431,7 @@ def handle_too_many_requests(e):
 
 
 if __name__ == '__main__':
+    import database_cleaner
     from helpers.handler import Handler
 
     handler = Handler()
