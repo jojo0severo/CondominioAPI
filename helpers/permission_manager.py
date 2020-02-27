@@ -12,6 +12,23 @@ from controller.event_controller import EventController
 import bcrypt
 
 
+def _user_key_decorator(function):
+    def check_user_key(self, *args, **kwargs):
+        if kwargs.get('user_key') not in self.users_permission_level:
+            return False, 'User session not registered'
+
+        return function(self, *kwargs.values())
+
+    return check_user_key
+
+
+def _default_answer_decorator(function):
+    def check_default_answer(self, *args, **kwargs):
+        return function(self, *kwargs.values()) or (False, 'User does not have the necessary permission level')
+
+    return check_default_answer
+
+
 class PermissionManager:
     def __init__(self):
         self.employee_types = {1: 'employee', 2: 'super_employee'}
@@ -25,23 +42,6 @@ class PermissionManager:
         self.guest_controller = GuestController()
         self.service_controller = ServiceController()
         self.event_controller = EventController()
-
-    @staticmethod
-    def _default_answer_decorator(function):
-        def check_default_answer(self, *args, **kwargs):
-            return function(self, *kwargs.values()) or (False, 'User does not have the necessary permission level')
-
-        return check_default_answer
-
-    @staticmethod
-    def _user_key_decorator(function):
-        def check_user_key(self, *args, **kwargs):
-            if kwargs.get('user_key') not in self.users_permission_level:
-                return False, 'User session not registered'
-
-            return function(self, *kwargs.values())
-
-        return check_user_key
 
     def register_key(self, key_type, session_key):
         if key_type == 'employee':
