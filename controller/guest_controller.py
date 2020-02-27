@@ -4,6 +4,7 @@ from model.apartment import Apartment
 from model.guest import Guest
 from setup import db
 from sqlalchemy import exc, and_
+from multiprocessing import Process
 import datetime
 import time
 
@@ -19,6 +20,9 @@ def clear_old_guests():
 
 
 class GuestController:
+    def __init__(self):
+        Process(target=clear_old_guests).start()
+
     def get_guest_by_id(self, guest_id):
         return Guest.query.filter(and_(Guest.id == guest_id, Guest.active == 1))
 

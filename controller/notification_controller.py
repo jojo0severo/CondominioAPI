@@ -1,6 +1,7 @@
 from model.notification import Notification
 from setup import db
 from sqlalchemy import exc, and_
+from multiprocessing import Process
 import datetime
 import time
 
@@ -16,6 +17,9 @@ def clear_old_notifications():
 
 
 class NotificationController:
+    def __init__(self):
+        Process(target=clear_old_notifications).start()
+
     def get_notification_by_id(self, notification_id):
         return Notification.query.filter(and_(Notification.id == notification_id, Notification.active == 1))
 

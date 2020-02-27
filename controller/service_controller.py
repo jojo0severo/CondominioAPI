@@ -4,6 +4,7 @@ from model.apartment import Apartment
 from model.service import Service
 from setup import db
 from sqlalchemy import exc, and_
+from multiprocessing import Process
 import datetime
 import time
 
@@ -19,6 +20,9 @@ def clear_old_services():
 
 
 class ServiceController:
+    def __init__(self):
+        Process(target=clear_old_services).start()
+
     def get_service_by_id(self, service_id):
         return Service.query.filter(and_(Service.id == service_id, Service.active == 1))
 
