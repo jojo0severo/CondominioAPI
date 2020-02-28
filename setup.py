@@ -7,13 +7,12 @@ from flask_socketio import SocketIO, join_room, disconnect, ConnectionRefusedErr
 from flask import Flask, request, session, jsonify, abort, make_response
 # import redis
 from functools import wraps
-from urllib.parse import urlparse
 import datetime
 import secrets
 import json
 import os
 
-# redis_password = urlparse(os.environ.get('REDIS_PASSWORD'))
+# redis_password = os.environ.get('REDIS_PASSWORD')
 db_url = os.environ.get('DATABASE_URL')
 
 # redis_db = redis.StrictRedis(host='127.0.0.1', port=6379, db=0, password=redis_password)
@@ -43,6 +42,12 @@ keys = set()
 blocked_sessions = set()
 
 super_user_url = secrets.token_urlsafe(44)
+
+
+from helpers.handler import Handler
+
+handler = Handler()
+print(super_user_url)
 
 
 def session_decorator(function):
@@ -437,13 +442,8 @@ def handle_too_many_requests(e):
 
 
 if __name__ == '__main__':
-    from helpers.handler import Handler
-
     # Clear previous run data
     # import database_cleaner
     # redis_db.flushall()
-
-    handler = Handler()
-    print(super_user_url)
 
     socket.run(app)
