@@ -53,7 +53,6 @@ def set_handler():
     global handler
 
     if handler is None:
-        import database_cleaner
         handler = Handler()
 
 
@@ -153,7 +152,7 @@ def session_configuration():
 def login_super_user():
     if session.get('KEY') is not None:
         status = 409
-        response = {'status': 409, 'result': False, 'event': 'User already logged', 'data': {}}
+        response = {'status': 409, 'result': False, 'event': 'User already logged', 'data': {}, 'key': session['KEY']}
 
     else:
         try:
@@ -205,7 +204,7 @@ def login(login_type):
 
     if session.get('KEY') is not None:
         status = 409
-        response = {'status': 409, 'result': False, 'event': 'User already logged', 'data': {}}
+        response = {'status': 409, 'result': False, 'event': 'User already logged', 'data': {}, 'key': session['KEY']}
 
     else:
         try:
