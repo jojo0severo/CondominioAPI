@@ -22,7 +22,7 @@ app.config['SECRET_KEY'] = secrets.token_urlsafe(30)
 app.config['JSON_SORT_KEYS'] = False
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SQLALCHEMY_DATABASE_URI'] = f'postgresql://{db_url}'
+app.config['SQLALCHEMY_DATABASE_URI'] = f'postgres://{db_url}'
 
 app.config['CORS_HEADERS'] = 'Content-Type'
 
