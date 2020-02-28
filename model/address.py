@@ -8,7 +8,7 @@ class Address(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     street_name = db.Column(db.String(150), nullable=False)
     neighbourhood = db.Column(db.String(150), nullable=False)
-    city_id = db.Column(db.String(60), db.ForeignKey('city.id', ondelete='CASCADE'), nullable=False)
+    city_id = db.Column(db.Integer, db.ForeignKey('city.id', ondelete='CASCADE'), nullable=False)
 
     city = db.relationship('City', backref=db.backref('addresses', lazy=True, cascade='all, delete'), lazy=False)
 
