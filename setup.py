@@ -48,11 +48,11 @@ handler = None
 
 
 def set_handler():
-    from helpers.handler import Handler
-
     global handler
 
     if handler is None:
+        from helpers.handler import Handler
+
         handler = Handler()
 
 
