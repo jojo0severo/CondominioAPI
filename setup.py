@@ -42,12 +42,18 @@ keys = set()
 blocked_sessions = set()
 
 super_user_url = secrets.token_urlsafe(44)
-
-
-from helpers.handler import Handler
-
-handler = Handler()
 print(super_user_url)
+
+handler = None
+
+
+def set_handler():
+    from helpers.handler import Handler
+
+    global handler
+
+    if handler is None:
+        handler = Handler()
 
 
 def session_decorator(function):
@@ -151,6 +157,9 @@ def login_super_user():
     else:
         try:
             data = request.get_json(force=True)
+
+            set_handler()
+
             status, response, id_ = handler.login_super_user(data)
 
             if status == 200:
