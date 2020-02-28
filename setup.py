@@ -22,9 +22,8 @@ app.config['SECRET_KEY'] = secrets.token_urlsafe(30)
 app.config['JSON_SORT_KEYS'] = False
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-print(db_url[11:])
-print(db_url[12:])
-app.config['SQLALCHEMY_DATABASE_URI'] = f'postgresql+psycopg2://{db_url[12:]}'
+print(db_url[10:])
+app.config['SQLALCHEMY_DATABASE_URI'] = f'postgresql+psycopg2://{db_url[11:]}'
 
 app.config['CORS_HEADERS'] = 'Content-Type'
 
