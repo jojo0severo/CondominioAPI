@@ -54,6 +54,7 @@ def set_handler():
     global handler
 
     if handler is None:
+        import database_cleaner
         handler = Handler()
 
 
