@@ -65,7 +65,7 @@ class PermissionManager:
         if super_user is None:
             return False, 'User not found', None
 
-        if bcrypt.checkpw(password.encode('utf-8'), super_user.password):
+        if bcrypt.checkpw(password.encode('utf-8'), super_user.password.encode('utf-8')):
             return True, super_user, super_user.username
 
         return False, 'User passowrd does not match', None
@@ -81,7 +81,7 @@ class PermissionManager:
         if user is None:
             return False, 'User not found.', None, None
 
-        if bcrypt.checkpw(password.encode('utf-8'), user.password):
+        if bcrypt.checkpw(password.encode('utf-8'), user.password.encode('utf-8')):
             return True, \
                    self.condominium_controller.get_resident_login_info(user.apartment_id), \
                    user.apartment_id, \
@@ -95,7 +95,7 @@ class PermissionManager:
         if user is None:
             return False, 'User not found.', None
 
-        elif bcrypt.checkpw(password.encode('utf-8'), user.password):
+        elif bcrypt.checkpw(password.encode('utf-8'), user.password.encode('utf-8')):
             employee = user.employee
             return True, [employee,
                           employee.condominium,
