@@ -6,8 +6,8 @@ class EmployeeUser(db.Model):
     __table_args__ = (db.UniqueConstraint('employee_id'), db.UniqueConstraint('username'))
 
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(30), db.ForeignKey('username.username', ondelete='CASCADE'), nullable=False)
-    password = db.Column(db.String(30), nullable=False)
+    username = db.Column(db.String(100), db.ForeignKey('username.username', ondelete='CASCADE'), nullable=False)
+    password = db.Column(db.String(200), nullable=False)
     employee_id = db.Column(db.Integer, db.ForeignKey('employee.id', ondelete='CASCADE'), nullable=False)
 
     employee = db.relationship('Employee',
