@@ -5,31 +5,14 @@ from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from flask_socketio import SocketIO, join_room, disconnect, ConnectionRefusedError
 from flask import Flask, request, session, jsonify, abort, make_response
-# import redis
 from functools import wraps
 import datetime
 import secrets
 import json
 import os
 
-# redis_password = os.environ.get('REDIS_PASSWORD')
-db_url = os.environ.get('DATABASE_URL')
-
-# redis_db = redis.StrictRedis(host='127.0.0.1', port=6379, db=0, password=redis_password)
-
 app = Flask(__name__)
-app.config['SECRET_KEY'] = secrets.token_urlsafe(30)
-app.config['JSON_SORT_KEYS'] = False
-
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SQLALCHEMY_DATABASE_URI'] = f'postgresql+psycopg2://{db_url[11:]}'
-
-app.config['CORS_HEADERS'] = 'Content-Type'
-
-# app.config['SESSION_TYPE'] = 'redis'
-# app.config['SESSION_REDIS'] = redis_db
-# app.config['SESSION_FILE_THRESHOLD'] = 10000
-app.config['PERMANENT_SESSION_LIFETIME'] = datetime.timedelta(days=2)
+app.config.from_object(os.environ['APP_SETTINGS'])
 
 # Session(app)
 CORS(app)
@@ -41,8 +24,8 @@ socket = SocketIO(app)
 keys = set()
 blocked_sessions = set()
 
-super_user_url = secrets.token_urlsafe(44)
-print(super_user_url)
+super_user_url = app.config['SUPER_USER_URL']
+print('\n', '===', super_user_url, '===', '\n')
 
 handler = None
 
@@ -150,36 +133,40 @@ def session_configuration():
 
 @app.route(f'/login/{super_user_url}', methods=['POST'])
 def login_super_user():
-    if session.get('KEY') is not None:
-        status = 409
-        response = {'status': 409, 'result': False, 'event': 'User already logged', 'data': {}, 'key': session['KEY']}
+    try:
+        data = request.get_json(force=True)
 
-    else:
-        try:
-            data = request.get_json(force=True)
+        set_handler()
+        status, response, id_ = handler.login_super_user(data)
 
-            set_handler()
+        if session.get('KEY') is not None and status == 200:
+            status = 206
+            response = {'status': 206, 'result': False, 'event': 'Key recovered', 'data': {}, 'key': session['KEY']}
 
-            status, response, id_ = handler.login_super_user(data)
+        elif session.get('KEY') is not None:
+            status = 409
+            response = {'status': 409, 'result': False, 'event': 'User already logged', 'data': {}, 'key': session['KEY']}
 
-            if status == 200:
-                key = secrets.token_urlsafe(20)
+            return status, response
 
-                keys.add(key)
-                response['key'] = key
+        elif status == 200:
+            key = secrets.token_urlsafe(20)
 
-                session['KEY'] = key
-                session['ID'] = id_
-                session['ROOM'] = 'system'
-                session['DATETIME'] = datetime.datetime.now()
-                session['NEW'] = False
-                session['TYPE'] = 'employee'
+            keys.add(key)
+            response['key'] = key
 
-                handler.register_key('super_user', key)
+            session['KEY'] = key
+            session['ID'] = id_
+            session['ROOM'] = 'system'
+            session['DATETIME'] = datetime.datetime.now()
+            session['NEW'] = False
+            session['TYPE'] = 'employee'
 
-        except json.JSONDecodeError:
-            status = 422
-            response = {'status': 422, 'result': False, 'event': 'Unable to process the data, not JSON formatted', 'data': {}}
+            handler.register_key('super_user', key)
+
+    except json.JSONDecodeError:
+        status = 422
+        response = {'status': 422, 'result': False, 'event': 'Unable to process the data, not JSON formatted', 'data': {}}
 
     return jsonify(response), status
 
@@ -202,59 +189,71 @@ def register_condominium_super_user():
 def login(login_type):
     login_type = str(login_type).lower()
 
-    if session.get('KEY') is not None:
-        status = 409
-        response = {'status': 409, 'result': False, 'event': 'User already logged', 'data': {}, 'key': session['KEY']}
+    try:
+        data = request.get_json(force=True)
+        if login_type == 'resident':
+            status, response, room, id_ = handler.login_resident(data)
 
-    else:
-        try:
-            data = request.get_json(force=True)
-            if login_type == 'resident':
-                status, response, room, id_ = handler.login_resident(data)
+            if session.get('KEY') is not None and status == 200:
+                status = 206
+                response = {'status': 206, 'result': False, 'event': 'Key recovered', 'data': {}, 'key': session['KEY']}
 
-                if status == 200 or (status == 404 and login_type == 'resident'):
-                    key = secrets.token_urlsafe(20)
+            elif session.get('KEY') is not None:
+                status = 409
+                response = {'status': 409, 'result': False, 'event': 'User already logged logging out', 'data': {}}
 
-                    keys.add(key)
-                    response['key'] = key
+            elif status == 200 or (status == 404 and login_type == 'resident'):
 
-                    session['KEY'] = key
-                    session['ID'] = id_
-                    session['ROOM'] = room
-                    session['DATETIME'] = datetime.datetime.now()
-                    session['TYPE'] = login_type
-                    if status == 404:
-                        session['NEW'] = True
-                    else:
-                        session['NEW'] = False
+                key = secrets.token_urlsafe(20)
 
-                    handler.register_key(login_type, key)
+                keys.add(key)
+                response['key'] = key
 
-            elif login_type == 'employee':
-                status, response, room, id_, login_type = handler.login_employee(data)
-
-                if status == 200:
-                    key = secrets.token_urlsafe(20)
-
-                    keys.add(key)
-                    response['key'] = key
-
-                    session['KEY'] = key
-                    session['ID'] = id_
-                    session['ROOM'] = room
-                    session['DATETIME'] = datetime.datetime.now()
-                    session['TYPE'] = login_type
+                session['KEY'] = key
+                session['ID'] = id_
+                session['ROOM'] = room
+                session['DATETIME'] = datetime.datetime.now()
+                session['TYPE'] = login_type
+                if status == 404:
+                    session['NEW'] = True
+                else:
                     session['NEW'] = False
 
-                    handler.register_key(login_type, key)
-    
-            else:
-                status = 404
-                response = {'status': 404, 'result': False, 'event': 'Unknown login type', 'data': {}}
-                
-        except json.JSONDecodeError:
-            status = 422
-            response = {'status': 422, 'result': False, 'event': 'Unable to process the data, not JSON formatted', 'data': {}}
+                handler.register_key(login_type, key)
+
+        elif login_type == 'employee':
+            status, response, room, id_, login_type = handler.login_employee(data)
+
+            if session.get('KEY') is not None and status == 200:
+                status = 206
+                response = {'status': 206, 'result': False, 'event': 'Key recovered', 'data': {}, 'key': session['KEY']}
+
+            elif session.get('KEY') is not None:
+                status = 409
+                response = {'status': 409, 'result': False, 'event': 'User already logged, logging out', 'data': {}}
+
+            elif status == 200:
+                key = secrets.token_urlsafe(20)
+
+                keys.add(key)
+                response['key'] = key
+
+                session['KEY'] = key
+                session['ID'] = id_
+                session['ROOM'] = room
+                session['DATETIME'] = datetime.datetime.now()
+                session['TYPE'] = login_type
+                session['NEW'] = False
+
+                handler.register_key(login_type, key)
+
+        else:
+            status = 404
+            response = {'status': 404, 'result': False, 'event': 'Unknown login type', 'data': {}}
+
+    except json.JSONDecodeError:
+        status = 422
+        response = {'status': 422, 'result': False, 'event': 'Unable to process the data, not JSON formatted', 'data': {}}
 
     return jsonify(response), status
 
