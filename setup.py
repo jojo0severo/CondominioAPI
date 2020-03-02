@@ -7,6 +7,7 @@ from flask_socketio import SocketIO, join_room, disconnect, ConnectionRefusedErr
 from flask import Flask, request, session, jsonify, abort, make_response
 from functools import wraps
 import datetime
+import time
 import secrets
 import json
 import os
@@ -174,6 +175,8 @@ def login_super_user():
 @app.route(f'/condominium/{super_user_url}', methods=['POST'])
 @session_decorator
 def register_condominium_super_user():
+    before = time.time()
+
     try:
         condominium_schema = request.get_json(force=True)['schema']
         status, response = handler.build_condominium_schema(condominium_schema, session['KEY'])
@@ -182,11 +185,16 @@ def register_condominium_super_user():
         status = 422
         response = {'status': 422, 'result': False, 'event': 'Unable to process the data, not JSON formatted', 'data': {}}
 
+    after = time.time()
+    response['time'] = after - before
+
     return jsonify(response), status
 
 
 @app.route('/login/<login_type>', methods=['POST'])
 def login(login_type):
+    before = time.time()
+
     login_type = str(login_type).lower()
 
     try:
@@ -255,12 +263,17 @@ def login(login_type):
         status = 422
         response = {'status': 422, 'result': False, 'event': 'Unable to process the data, not JSON formatted', 'data': {}}
 
+    after = time.time()
+    response['time'] = after - before
+
     return jsonify(response), status
 
 
 @app.route('/register/<registration_type>', methods=['POST'])
 @session_decorator
 def register(registration_type):
+    before = time.time()
+
     registration_type = str(registration_type).lower()
     try:
         data = request.get_json(force=True)
@@ -284,6 +297,9 @@ def register(registration_type):
         status = 422
         response = {'status': 422, 'result': False, 'event': 'Unable to process the data, not JSON formatted', 'data': {}}
 
+    after = time.time()
+    response['time'] = after - before
+
     return jsonify(response), status
 
 
@@ -291,12 +307,17 @@ def register(registration_type):
 @session_decorator
 @first_login_decorator
 def employees():
+    before = time.time()
+
     try:
         status, response = handler.get_employees(session['ID'], session['KEY'])
 
     except json.JSONDecodeError:
         status = 422
         response = {'status': 422, 'result': False, 'event': 'Unable to process the data, not JSON formatted', 'data': {}}
+
+    after = time.time()
+    response['time'] = after - before
 
     return response, status
 
@@ -305,6 +326,8 @@ def employees():
 @session_decorator
 @first_login_decorator
 def residents():
+    before = time.time()
+
     try:
         data = request.get_json(force=True)
         status, response = handler.get_residents(data, session['ID'], session['KEY'])
@@ -313,6 +336,9 @@ def residents():
         status = 422
         response = {'status': 422, 'result': False, 'event': 'Unable to process the data, not JSON formatted', 'data': {}}
 
+    after = time.time()
+    response['time'] = after - before
+
     return response, status
 
 
@@ -320,6 +346,8 @@ def residents():
 @session_decorator
 @first_login_decorator
 def notification():
+    before = time.time()
+
     data = request.get_json(force=True)
     if request.method == 'GET':
         status, response = handler.get_notifications(session['ID'], session['KEY'])
@@ -342,6 +370,9 @@ def notification():
             socket.emit('notification', {'type': 'deletion', 'data': data}, room=session['ROOM'] + '_resident')
             socket.emit('notification', {'type': 'deletion', 'data': data}, room=session['ROOM'] + '_employee')
 
+    after = time.time()
+    response['time'] = after - before
+
     return response, status
 
 
@@ -349,6 +380,7 @@ def notification():
 @session_decorator
 @first_login_decorator
 def guest():
+    before = time.time()
     data = request.get_json(force=True)
     if request.method == 'GET':
         status, response = handler.get_guests(data, session['ID'], session['KEY'])
@@ -361,6 +393,9 @@ def guest():
         status, response = handler.remove_guest(data)
         socket.emit('guest', {'type': 'deletion', 'data': data}, room=session['ROOM'] + '_employee')
 
+    after = time.time()
+    response['time'] = after - before
+
     return response, status
 
 
@@ -368,6 +403,8 @@ def guest():
 @session_decorator
 @first_login_decorator
 def service():
+    before = time.time()
+
     data = request.get_json(force=True)
     if request.method == 'GET':
         response = handler.get_services(session['ID'], session['KEY'])
@@ -380,6 +417,9 @@ def service():
         response = handler.remove_service(data, session['ID'], session['KEY'])
         socket.emit('service', {'type': 'deletion', 'data': data}, room=session['ROOM'] + '_employee')
 
+    after = time.time()
+    response['time'] = after - before
+
     return response, 204
 
 
@@ -387,6 +427,7 @@ def service():
 @session_decorator
 @first_login_decorator
 def rule():
+    before = time.time()
     data = request.get_json(force=True)
     if request.method == 'GET':
         response = handler.get_rules(data)
@@ -401,6 +442,9 @@ def rule():
         socket.emit('rule', {'type': 'deletion', 'data': data}, room=session['ROOM'] + '_resident')
         socket.emit('rule', {'type': 'deletion', 'data': data}, room=session['ROOM'] + '_employee')
 
+    after = time.time()
+    response['time'] = after - before
+
     return response, 204
 
 
@@ -408,12 +452,17 @@ def rule():
 @session_decorator
 @first_login_decorator
 def event_type():
+    before = time.time()
+
     try:
         status, response = handler.get_event_types(session['ID'], session['KEY'])
 
     except json.JSONDecodeError:
         status = 422
         response = {'status': 422, 'result': False, 'event': 'Unable to process the data, not JSON formatted', 'data': {}}
+
+    after = time.time()
+    response['time'] = after - before
 
     return response, status
 
@@ -422,6 +471,8 @@ def event_type():
 @session_decorator
 @first_login_decorator
 def event():
+    before = time.time()
+
     try:
         data = request.get_json(force=True)
         if request.method == 'GET':
@@ -440,6 +491,9 @@ def event():
     except json.JSONDecodeError:
         status = 422
         response = {'status': 422, 'result': False, 'event': 'Unable to process the data, not JSON formatted', 'data': {}}
+
+    after = time.time()
+    response['time'] = after - before
 
     return response, status
 
