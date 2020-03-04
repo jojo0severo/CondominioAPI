@@ -62,11 +62,11 @@ class Handler:
     @key_error_decorator
     @value_error_decorator
     @type_error_decorator
-    def login_super_user(self, data):
+    async def login_super_user(self, data):
         username = data['username']
         password = data['password']
 
-        result, info, id_ = self.permission_manager.login_super_user(username, password)
+        result, info, id_ = await self.permission_manager.login_super_user(username, password)
         status, response = self.formatter.format_super_user_connection(result, info, {'success': 200, 'failure': 401})
 
         return status, response, id_

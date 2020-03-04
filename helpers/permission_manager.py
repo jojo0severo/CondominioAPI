@@ -1,15 +1,17 @@
 from model.super_user import SuperUser
-from controller.address_controller import AddressController
-from controller.condominium_controller import CondominiumController
-from controller.resident_controller import ResidentController
-from controller.employee_controller import EmployeeController
-from controller.notification_controller import NotificationController
-from controller.rule_controller import RuleController
-from controller.guest_controller import GuestController
-from controller.service_controller import ServiceController
-from controller.event_controller import EventController
+# from controller.address_controller import AddressController
+# from controller.condominium_controller import CondominiumController
+# from controller.resident_controller import ResidentController
+# from controller.employee_controller import EmployeeController
+# from controller.notification_controller import NotificationController
+# from controller.rule_controller import RuleController
+# from controller.guest_controller import GuestController
+# from controller.service_controller import ServiceController
+# from controller.event_controller import EventController
 from helpers.permission_levels import PermissionLevel
-from helpers.condominium_builder import build
+# from helpers.condominium_builder import build
+from sqlalchemy.sql import select
+from setup import db
 import bcrypt
 
 
@@ -34,15 +36,15 @@ class PermissionManager:
     def __init__(self):
         self.employee_types = {1: 'employee', 2: 'super_employee'}
         self.users_permission_level = {}
-        self.address_controller = AddressController()
-        self.condominium_controller = CondominiumController()
-        self.resident_controller = ResidentController()
-        self.employee_controller = EmployeeController()
-        self.notification_controller = NotificationController()
-        self.rule_controller = RuleController()
-        self.guest_controller = GuestController()
-        self.service_controller = ServiceController()
-        self.event_controller = EventController()
+        # self.address_controller = AddressController()
+        # self.condominium_controller = CondominiumController()
+        # self.resident_controller = ResidentController()
+        # self.employee_controller = EmployeeController()
+        # self.notification_controller = NotificationController()
+        # self.rule_controller = RuleController()
+        # self.guest_controller = GuestController()
+        # self.service_controller = ServiceController()
+        # self.event_controller = EventController()
 
     def register_key(self, key_type, session_key):
         if key_type == 'employee':
@@ -60,8 +62,9 @@ class PermissionManager:
         else:
             raise RuntimeError
 
-    def login_super_user(self, username, password):
-        super_user = SuperUser.query.get(username)
+    async def login_super_user(self, username, password):
+        super_user = await db.fetch_one(select([SuperUser]).where(SuperUser.username == username))
+
         if super_user is None:
             return False, 'User not found', None
 

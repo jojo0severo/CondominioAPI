@@ -1,31 +1,27 @@
-from flask_limiter.util import get_remote_address
-from flask_limiter import Limiter
-from flask_cors import CORS
-# from flask_session import Session
-from flask_sqlalchemy import SQLAlchemy
-from flask_socketio import SocketIO, join_room, disconnect, ConnectionRefusedError
-from flask import Flask, request, session, jsonify, abort, make_response
+from starlette.middleware.sessions import SessionMiddleware
+from starlette.middleware.cors import CORSMiddleware
+from starlette.middleware.authentication import AuthenticationMiddleware
+from starlette.authentication import AuthenticationBackend, AuthenticationError, SimpleUser, UnauthenticatedUser, AuthCredentials
+from starlette.middleware import Middleware
+from starlette.applications import Starlette
+from starlette.responses import JSONResponse
+from starlette.routing import Route
+from sqlalchemy.ext.declarative import declarative_base
+import databases
+import secrets
 from functools import wraps
 import datetime
 import time
-import secrets
 import json
 import os
 
-app = Flask(__name__)
-app.config.from_object(os.environ['APP_SETTINGS'])
-
-# Session(app)
-CORS(app)
-limiter = Limiter(app, key_func=get_remote_address, default_limits=['1000/day', '400/hour', '30/minute', '2/second'])
-
-db = SQLAlchemy(app)
-socket = SocketIO(app)
+Base = declarative_base()
+db = databases.Database('sqlite:///data/api.db')
 
 keys = set()
 blocked_sessions = set()
 
-super_user_url = app.config['SUPER_USER_URL']
+super_user_url = 'secret'
 print('\n', '===', super_user_url, '===', '\n')
 
 handler = None
@@ -40,128 +36,20 @@ def set_handler():
         handler = Handler()
 
 
-def session_decorator(function):
-    @wraps(function)
-    def session_checker(*args, **kwargs):
-        session_key = session.get('KEY')
-
-        if not session_key:
-            return {'status': 401, 'result': False, 'event': 'User is not logged or session expired', 'data': {}}, 401
-
-        if session_key not in keys:
-            blocked_sessions.add(session['KEY'])
-            abort(make_response(jsonify({'status': 401, 'result': False, 'event': 'User blocked due to attempt to fake identity'}), 401))
-
-        data = request.get_json(force=True)
-        if 'key' not in [str(key).lower() for key in data.keys()]:
-            return {'status': 400, 'result': False, 'event': 'Missing information', 'data': {}}, 400
-
-        key = data['key']
-
-        if key != session_key:
-            return {'status': 403, 'result': False, 'event': 'Invalid key', 'data': {}}, 403
-
-        elif key not in keys:
-            return {'status': 401, 'result': False, 'event': 'Key not recognized', 'data': {}}, 401
-
-        else:
-            return function(*kwargs.values())
-
-    return session_checker
-
-
-def first_login_decorator(function):
-    @wraps(function)
-    def first_login_checker(*args, **kwargs):
-        first_login = session.get('NEW')
-        if first_login:
-            return {'status': 403, 'result': False, 'event': 'User is not registered', 'data': {}}, 403
-
-        return function(*kwargs.values())
-
-    return first_login_checker
-
-
-@socket.on('connect')
-def verify_connection():
-    session_key = session.get('KEY')
-
-    if not session_key:
-        raise ConnectionRefusedError('User not logged')
-
-    key = request.get_json(force=True)['key']
-    if key != session_key:
-        blocked_sessions.add(session_key)
-        raise ConnectionRefusedError('User altered the key. Session is being blocked')
-
-    elif key not in keys:
-        raise ConnectionRefusedError('Key not registered')
-
-    if not all([dict_key in session for dict_key in ['ID', 'ROOM', 'DATETIME', 'NEW', 'TYPE']]):
-        blocked_sessions.add(session_key)
-        raise ConnectionRefusedError('User altered the session. Session is being blocked')
-
-    if session['TYPE'] != 'resident' and session['TYPE'] != 'employee':
-        blocked_sessions.add(session_key)
-        raise ConnectionRefusedError('User altered the session. Session is being blocked')
-
-    join_room(session['ROOM'] + '_' + session['TYPE'], request.sid)
-
-
-@app.before_request
-def session_configuration():
-    if 'KEY' in session and session['KEY'] in blocked_sessions:
-        abort(make_response(jsonify({'status': 401, 'result': False, 'event': 'User blocked due to attempt to fake data'}), 401))
-
-    session.modified = True
-
-    if 'DATETIME' in session:
-        datetime_diff = session['DATETIME'] - datetime.datetime.now()
-        if datetime_diff.days < 1:
-            session['DATETIME'] = datetime.datetime.now()
-        else:
-            handler.drop_session(session['KEY'])
-            keys.remove(session['KEY'])
-            del session['KEY']
-            del session['ID']
-            del session['ROOM']
-            del session['DATETIME']
-            del session['NEW']
-            del session['TYPE']
-
-            disconnect()
-
-
-@app.route(f'/login/{super_user_url}', methods=['POST'])
-def login_super_user():
+async def login_super_user(request):
     set_handler()
 
     before = time.time()
     try:
-        data = request.get_json(force=True)
+        data = await request.json()
 
-        status, response, id_ = handler.login_super_user(data)
+        status, response, id_ = await handler.login_super_user(data)
 
-        if session.get('KEY') is not None and status == 200:
-            status = 206
-            response = {'status': 206, 'result': False, 'event': 'Key recovered', 'data': {}, 'key': session['KEY']}
-
-        elif session.get('KEY') is not None:
-            status = 409
-            response = {'status': 409, 'result': False, 'event': 'User already logged', 'data': {}, 'key': session['KEY']}
-
-        elif status == 200:
+        if status == 200:
             key = secrets.token_urlsafe(20)
 
             keys.add(key)
             response['key'] = key
-
-            session['KEY'] = key
-            session['ID'] = id_
-            session['ROOM'] = 'system'
-            session['DATETIME'] = datetime.datetime.now()
-            session['NEW'] = False
-            session['TYPE'] = 'employee'
 
             handler.register_key('super_user', key)
 
@@ -172,17 +60,15 @@ def login_super_user():
     after = time.time()
     response['time'] = after - before
 
-    return jsonify(response), status
+    return JSONResponse(response, status_code=status)
 
 
-@app.route(f'/condominium/{super_user_url}', methods=['POST'])
-@session_decorator
-def register_condominium_super_user():
+async def register_condominium_super_user(request):
     before = time.time()
 
     try:
         condominium_schema = request.get_json(force=True)['schema']
-        status, response = handler.build_condominium_schema(condominium_schema, session['KEY'])
+        status, response = handler.build_condominium_schema(condominium_schema)
 
     except json.JSONDecodeError:
         status = 422
@@ -191,70 +77,36 @@ def register_condominium_super_user():
     after = time.time()
     response['time'] = after - before
 
-    return jsonify(response), status
+    return JSONResponse(response, status_code=status)
 
 
-@app.route('/login/<login_type>', methods=['POST'])
-def login(login_type):
+async def login(request):
     before = time.time()
 
-    login_type = str(login_type).lower()
+    login_type = str(request.path_params['login_type']).lower()
 
     try:
         data = request.get_json(force=True)
         if login_type == 'resident':
             status, response, room, id_ = handler.login_resident(data)
 
-            if session.get('KEY') is not None and status == 200:
-                status = 206
-                response = {'status': 206, 'result': False, 'event': 'Key recovered', 'data': {}, 'key': session['KEY']}
-
-            elif session.get('KEY') is not None:
-                status = 409
-                response = {'status': 409, 'result': False, 'event': 'User already logged logging out', 'data': {}}
-
-            elif status == 200 or (status == 404 and login_type == 'resident'):
+            if status == 200 or (status == 404 and login_type == 'resident'):
 
                 key = secrets.token_urlsafe(20)
 
                 keys.add(key)
                 response['key'] = key
-
-                session['KEY'] = key
-                session['ID'] = id_
-                session['ROOM'] = room
-                session['DATETIME'] = datetime.datetime.now()
-                session['TYPE'] = login_type
-                if status == 404:
-                    session['NEW'] = True
-                else:
-                    session['NEW'] = False
 
                 handler.register_key(login_type, key)
 
         elif login_type == 'employee':
             status, response, room, id_, login_type = handler.login_employee(data)
 
-            if session.get('KEY') is not None and status == 200:
-                status = 206
-                response = {'status': 206, 'result': False, 'event': 'Key recovered', 'data': {}, 'key': session['KEY']}
-
-            elif session.get('KEY') is not None:
-                status = 409
-                response = {'status': 409, 'result': False, 'event': 'User already logged, logging out', 'data': {}}
-
-            elif status == 200:
+            if status == 200:
                 key = secrets.token_urlsafe(20)
 
                 keys.add(key)
                 response['key'] = key
-
-                session['KEY'] = key
-                session['ID'] = id_
-                session['ROOM'] = room
-                session['DATETIME'] = datetime.datetime.now()
-                session['TYPE'] = login_type
-                session['NEW'] = False
 
                 handler.register_key(login_type, key)
 
@@ -269,28 +121,23 @@ def login(login_type):
     after = time.time()
     response['time'] = after - before
 
-    return jsonify(response), status
+    return JSONResponse(response, status_code=status)
 
 
-@app.route('/register/<registration_type>', methods=['POST'])
-@session_decorator
-def register(registration_type):
+async def register(request):
     before = time.time()
 
-    registration_type = str(registration_type).lower()
+    registration_type = str(request.path_params['registration_type']).lower()
     try:
         data = request.get_json(force=True)
         if registration_type == 'user':
-            status, response = handler.register_resident_user(data, session['ID'], session['KEY'])
+            status, response = handler.register_resident_user(data)
 
         elif registration_type == 'resident':
-            status, response = handler.register_resident(data, session['ID'], session['KEY'])
-
-            if status == 201:
-                session['NEW'] = False
+            status, response = handler.register_resident(data)
 
         elif registration_type == 'employee':
-            status, response = handler.register_employee(data, session['ID'], session['KEY'])
+            status, response = handler.register_employee(data)
 
         else:
             status = 400
@@ -303,13 +150,10 @@ def register(registration_type):
     after = time.time()
     response['time'] = after - before
 
-    return jsonify(response), status
+    return JSONResponse(response, status_code=status)
 
 
-@app.route('/employees', methods=['GET'])
-@session_decorator
-@first_login_decorator
-def employees():
+async def employees():
     before = time.time()
 
     try:
@@ -322,13 +166,10 @@ def employees():
     after = time.time()
     response['time'] = after - before
 
-    return response, status
+    return JSONResponse(response, status_code=status)
 
 
-@app.route('/residents', methods=['GET'])
-@session_decorator
-@first_login_decorator
-def residents():
+async def residents(request):
     before = time.time()
 
     try:
@@ -342,13 +183,10 @@ def residents():
     after = time.time()
     response['time'] = after - before
 
-    return response, status
+    return JSONResponse(response, status_code=status)
 
 
-@app.route('/notification/', methods=['GET', 'POST', 'DELETE'])
-@session_decorator
-@first_login_decorator
-def notification():
+async def notification(request):
     before = time.time()
 
     data = request.get_json(force=True)
@@ -362,50 +200,35 @@ def notification():
     elif request.method == 'POST':
         status, response = handler.register_notification(data, session['ID'], session['KEY'])
 
-        if status == 201:
-            socket.emit('notification', {'type': 'registration', 'data': data}, room=session['ROOM'] + '_resident')
-            socket.emit('notification', {'type': 'registration', 'data': data}, room=session['ROOM'] + '_employee')
-
     else:
-        status, response = handler.remove_notification(data)
-
-        if status == 201:
-            socket.emit('notification', {'type': 'deletion', 'data': data}, room=session['ROOM'] + '_resident')
-            socket.emit('notification', {'type': 'deletion', 'data': data}, room=session['ROOM'] + '_employee')
+        status, response = handler.remove_notification(data, session['ID'], session['KEY'])
 
     after = time.time()
     response['time'] = after - before
 
-    return response, status
+    return JSONResponse(response, status_code=status)
 
 
-@app.route('/guest', methods=['GET', 'POST', 'DELETE'])
-@session_decorator
-@first_login_decorator
-def guest():
+async def guest(request):
     before = time.time()
+
     data = request.get_json(force=True)
     if request.method == 'GET':
         status, response = handler.get_guests(data, session['ID'], session['KEY'])
 
     elif request.method == 'POST':
         status, response = handler.register_guest(data, session['ID'], session['KEY'])
-        socket.emit('guest', {'type': 'registration', 'data': data}, room=session['ROOM'] + '_employee')
 
     else:
-        status, response = handler.remove_guest(data)
-        socket.emit('guest', {'type': 'deletion', 'data': data}, room=session['ROOM'] + '_employee')
+        status, response = handler.remove_guest(data, session['ID'], session['KEY'])
 
     after = time.time()
     response['time'] = after - before
 
-    return response, status
+    return JSONResponse(response, status_code=status)
 
 
-@app.route('/service', methods=['GET', 'POST', 'DELETE'])
-@session_decorator
-@first_login_decorator
-def service():
+async def service(request):
     before = time.time()
 
     data = request.get_json(force=True)
@@ -414,47 +237,36 @@ def service():
 
     elif request.method == 'POST':
         response = handler.register_service(data, session['ID'], session['KEY'])
-        socket.emit('service', {'type': 'registration', 'data': data}, room=session['ROOM'] + '_employee')
 
     else:
         response = handler.remove_service(data, session['ID'], session['KEY'])
-        socket.emit('service', {'type': 'deletion', 'data': data}, room=session['ROOM'] + '_employee')
 
     after = time.time()
     response['time'] = after - before
 
-    return response, 204
+    return JSONResponse(response, status_code=204)
 
 
-@app.route('/rule', methods=['GET', 'POST', 'DELETE'])
-@session_decorator
-@first_login_decorator
-def rule():
+async def rule(request):
     before = time.time()
+
     data = request.get_json(force=True)
     if request.method == 'GET':
-        response = handler.get_rules(data)
+        response = handler.get_rules(session['ID'], session['KEY'])
 
     elif request.method == 'POST':
-        response = handler.register_rule(data)
-        socket.emit('rule', {'type': 'registration', 'data': data}, room=session['ROOM'] + '_resident')
-        socket.emit('rule', {'type': 'registration', 'data': data}, room=session['ROOM'] + '_employee')
+        response = handler.register_rule(data, session['ID'], session['KEY'])
 
     else:
-        response = handler.remove_rule(data)
-        socket.emit('rule', {'type': 'deletion', 'data': data}, room=session['ROOM'] + '_resident')
-        socket.emit('rule', {'type': 'deletion', 'data': data}, room=session['ROOM'] + '_employee')
+        response = handler.remove_rule(data, session['ID'], session['KEY'])
 
     after = time.time()
     response['time'] = after - before
 
-    return response, 204
+    return JSONResponse(response, status_code=204)
 
 
-@app.route('/event_type', methods=['GET'])
-@session_decorator
-@first_login_decorator
-def event_type():
+async def event_type():
     before = time.time()
 
     try:
@@ -467,13 +279,10 @@ def event_type():
     after = time.time()
     response['time'] = after - before
 
-    return response, status
+    return JSONResponse(response, status_code=status)
 
 
-@app.route('/event', methods=['GET', 'POST', 'DELETE'])
-@session_decorator
-@first_login_decorator
-def event():
+async def event(request):
     before = time.time()
 
     try:
@@ -483,13 +292,9 @@ def event():
 
         elif request.method == 'POST':
             status, response = handler.register_event(data, session['ID'], session['KEY'])
-            socket.emit('event', {'type': 'registration', 'data': data}, room=session['ROOM'] + '_resident')
-            socket.emit('event', {'type': 'registration', 'data': data}, room=session['ROOM'] + '_employee')
 
         else:
             status, response = handler.remove_event(data, session['ID'], session['KEY'])
-            socket.emit('event', {'type': 'deletion', 'data': data}, room=session['ROOM'] + '_resident')
-            socket.emit('event', {'type': 'deletion', 'data': data}, room=session['ROOM'] + '_employee')
 
     except json.JSONDecodeError:
         status = 422
@@ -498,17 +303,28 @@ def event():
     after = time.time()
     response['time'] = after - before
 
-    return response, status
+    return JSONResponse(response, status_code=status)
 
 
-@app.errorhandler(429)
-def handle_too_many_requests(e):
-    return jsonify({'status': 429, 'result': False, 'event': f'Too many requests made: {e.description}', 'data': {}})
+routes = [
+    Route(f'/login/{super_user_url}', login_super_user, methods=['POST']),
+    Route(f'/condominium/{super_user_url}', register_condominium_super_user, methods=['POST']),
+    Route('/login/{login_type}', login, methods=['POST']),
+    Route('/register/{registration_type}', register, methods=['POST']),
+    Route('/employees', employees, methods=['GET']),
+    Route('/residents', residents, methods=['GET']),
+    Route('/notification/', notification, methods=['GET', 'POST', 'DELETE']),
+    Route('/guest', guest, methods=['GET', 'POST', 'DELETE']),
+    Route('/service', service, methods=['GET', 'POST', 'DELETE']),
+    Route('/rule', rule, methods=['GET', 'POST', 'DELETE']),
+    Route('/event_type', event_type, methods=['GET']),
+    Route('/event', event, methods=['GET', 'POST', 'DELETE'])
+]
 
 
-if __name__ == '__main__':
-    # Clear previous run data
-    # import database_cleaner
-    # redis_db.flushall()
+middleware = [
+    Middleware(CORSMiddleware, allow_origins=['*']),
+    Middleware(SessionMiddleware, secret_key=secrets.token_urlsafe(37))
+]
 
-    socket.run(app)
+app = Starlette(routes=routes, middleware=middleware)
