@@ -134,10 +134,13 @@ def session_configuration():
 
 @app.route(f'/login/{super_user_url}', methods=['POST'])
 def login_super_user():
+    set_handler()
+
+    before = time.time()
+
     try:
         data = request.get_json(force=True)
 
-        set_handler()
         status, response, id_ = handler.login_super_user(data)
 
         if session.get('KEY') is not None and status == 200:
@@ -168,6 +171,9 @@ def login_super_user():
     except json.JSONDecodeError:
         status = 422
         response = {'status': 422, 'result': False, 'event': 'Unable to process the data, not JSON formatted', 'data': {}}
+
+    after = time.time()
+    response['time'] = after - before
 
     return jsonify(response), status
 
