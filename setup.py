@@ -17,7 +17,7 @@ app.config.from_object(os.environ['APP_SETTINGS'])
 
 # Session(app)
 CORS(app)
-limiter = Limiter(app, key_func=get_remote_address, default_limits=['1000/day', '400/hour', '30/minute', '2/second'])
+# limiter = Limiter(app, key_func=get_remote_address, default_limits=['1000/day', '400/hour', '30/minute', '2/second'])
 
 db = SQLAlchemy(app)
 socket = SocketIO(app)
@@ -141,7 +141,7 @@ def login_super_user():
     try:
         data = request.get_json(force=True)
 
-        status, response, id_ = handler.login_super_user(data)
+        status, response, id_, db_time = handler.login_super_user(data)
 
         if session.get('KEY') is not None and status == 200:
             status = 206
@@ -174,6 +174,7 @@ def login_super_user():
 
     after = time.time()
     response['time'] = after - before
+    response['db_time'] = db_time
 
     return jsonify(response), status
 

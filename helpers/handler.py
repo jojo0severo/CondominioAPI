@@ -66,10 +66,10 @@ class Handler:
         username = data['username']
         password = data['password']
 
-        result, info, id_ = self.permission_manager.login_super_user(username, password)
+        result, info, id_, time = self.permission_manager.login_super_user(username, password)
         status, response = self.formatter.format_super_user_connection(result, info, {'success': 200, 'failure': 401})
 
-        return status, response, id_
+        return status, response, id_, time
 
     @runtime_error_decorator
     @key_error_decorator
