@@ -16,7 +16,6 @@ import json
 import os
 
 Base = declarative_base()
-db = databases.Database(os.environ['DATABASE_URL'].replace('postgres://', 'postgresql://'))
 
 keys = set()
 blocked_sessions = set()

@@ -11,8 +11,9 @@ from model.super_user import SuperUser
 from helpers.permission_levels import PermissionLevel
 # from helpers.condominium_builder import build
 from sqlalchemy.sql import select
+import os
 import time
-from setup import db
+import asyncpg
 import bcrypt
 
 
@@ -64,9 +65,19 @@ class PermissionManager:
             raise RuntimeError
 
     async def login_super_user(self, username, password):
+        url = os.environ['DATABASE_URL'].split('//')[1]
+        user = url.split(':')[0]
+        password = url.split(':')[1].split('@')[0]
+        database = url.split('@')[1].split('/')[1]
+        host = url.split('@')[1].split(':')[0]
+        port = url.split('@')[1].split(':')[1].split('/')[0]
+
+        conn = await asyncpg.connect(user=user, password=password, host=host, port=port, database=database)
         db_start_time = time.time()
-        super_user = await db.fetch_one(select([SuperUser]).where(SuperUser.username == username))
+        super_user = await conn.fetchrow(select([SuperUser]).where(SuperUser.username == username))
         db_end_time = time.time()
+
+        await conn.close()
 
         if super_user is None:
             return False, 'User not found', None
