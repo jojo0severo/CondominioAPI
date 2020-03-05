@@ -136,7 +136,7 @@ class Handler:
     @type_error_decorator
     def register_resident_user(self, data, father_id, user_key):
         username = data['username']
-        password = bcrypt.hashpw(data['password'].encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        password = bcrypt.hashpw(data['password'].encode('utf-8'), bcrypt.gensalt(rounds=6)).decode('utf-8')
         apartment_id = data['apartment_id']
 
         result, info = self.permission_manager.register_resident_user(username, password, apartment_id, father_id, user_key)
@@ -152,7 +152,7 @@ class Handler:
     def register_employee(self, data, father_id, user_key):
         employee_type = data['employee_type']
         username = data['username']
-        password = bcrypt.hashpw(data['password'].encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        password = bcrypt.hashpw(data['password'].encode('utf-8'), bcrypt.gensalt(rounds=6)).decode('utf-8')
         cpf = data['cpf']
         name = data['name']
         birthday = data['birthday']
