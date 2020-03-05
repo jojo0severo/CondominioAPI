@@ -72,14 +72,13 @@ class PermissionManager:
         host = url.split('@')[1].split(':')[0]
         port = url.split('@')[1].split(':')[1].split('/')[0]
 
+        db_start_time = time.time()
         with psycopg2.connect(user=user, password=password_, host=host, port=port, dbname=database) as conn:
             with conn.cursor() as cursor:
-                db_start_time = time.time()
                 cursor.execute(f'SELECT username FROM super_user WHERE super_user.username = %s;', (username,))
                 super_user = cursor.fetchone()[0]
-                db_end_time = time.time()
 
-        await conn.close()
+        db_end_time = time.time()
 
         if super_user is None:
             return False, 'User not found', None
