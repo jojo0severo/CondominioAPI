@@ -7,7 +7,7 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 
 class BaseConfig(object):
     """Base configuration."""
-    SECRET_KEY = 'secret'
+    SECRET_KEY = secrets.token_urlsafe(30)
     DEBUG = False
     JSON_SORT_KEYS = False
     SQLALCHEMY_TRACK_MODIFICATIONS = False
@@ -31,7 +31,6 @@ class ProductionConfig(BaseConfig):
     db_url = os.environ.get('DATABASE_URL') or 'UnknownDatabase'
 
     ENV = 'production'
-    SECRET_KEY = secrets.token_urlsafe(30)
     SQLALCHEMY_DATABASE_URI = f'postgresql+psycopg2://{db_url[11:]}'
 
     SUPER_USER_URL = secrets.token_urlsafe(44)
