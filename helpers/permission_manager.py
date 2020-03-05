@@ -13,7 +13,7 @@ from helpers.permission_levels import PermissionLevel
 from sqlalchemy.sql import select
 import os
 import time
-import asyncpg
+import psycopg2
 import bcrypt
 
 
@@ -72,17 +72,19 @@ class PermissionManager:
         host = url.split('@')[1].split(':')[0]
         port = url.split('@')[1].split(':')[1].split('/')[0]
 
-        conn = await asyncpg.connect(user=user, password=password, host=host, port=port, database=database)
-        db_start_time = time.time()
-        super_user = await conn.fetchrow(f'SELECT super_user.username FROM super_user WHERE super_user.username = "{username}";')
-        db_end_time = time.time()
+        with psycopg2.connect(user=user, password=password, host=host, port=port, dbname=database) as conn:
+            with conn.cursor() as cursor:
+                db_start_time = time.time()
+                cursor.execute(f'SELECT username FROM super_user WHERE super_user.username = %s;', username)
+                super_user = cursor.fetchall()
+                db_end_time = time.time()
 
         await conn.close()
 
         if super_user is None:
             return False, 'User not found', None
 
-        if bcrypt.checkpw(password.encode('utf-8'), super_user.password.encode('utf-8')):
+        if bcrypt.checkpw(password.encode('utf-8'), super_user[1].encode('utf-8')):
             return True, super_user, super_user.username, db_end_time - db_start_time
 
         return False, 'User passowrd does not match', None
