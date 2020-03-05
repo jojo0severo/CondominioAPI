@@ -74,7 +74,7 @@ class PermissionManager:
 
         conn = await asyncpg.connect(user=user, password=password, host=host, port=port, database=database)
         db_start_time = time.time()
-        super_user = await conn.fetchrow(f'SELECT super_user.username FROM super_user WHERE super_user.username == {username}')
+        super_user = await conn.fetchrow(f'SELECT super_user.username FROM super_user WHERE super_user.username == "{username}";')
         db_end_time = time.time()
 
         await conn.close()
