@@ -16,7 +16,7 @@ import json
 import os
 
 Base = declarative_base()
-db = databases.Database('sqlite:///data/api.db')
+db = databases.Database(os.environ['DATABASE_URL'])
 
 keys = set()
 blocked_sessions = set()
