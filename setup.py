@@ -17,7 +17,7 @@ app.config.from_object(os.environ['APP_SETTINGS'])
 
 # Session(app)
 CORS(app)
-# limiter = Limiter(app, key_func=get_remote_address, default_limits=['1000/day', '400/hour', '30/minute', '2/second'])
+limiter = Limiter(app, key_func=get_remote_address, default_limits=['1000/day', '400/hour', '30/minute', '2/second'])
 
 db = SQLAlchemy(app)
 # socket = SocketIO(app)
