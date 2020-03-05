@@ -3,7 +3,7 @@ from flask_limiter import Limiter
 from flask_cors import CORS
 # from flask_session import Session
 from flask_sqlalchemy import SQLAlchemy
-from flask_socketio import SocketIO, join_room, disconnect, ConnectionRefusedError
+# from flask_socketio import SocketIO, join_room, disconnect, ConnectionRefusedError
 from flask import Flask, request, session, jsonify, abort, make_response
 from functools import wraps
 import datetime
@@ -20,7 +20,7 @@ CORS(app)
 # limiter = Limiter(app, key_func=get_remote_address, default_limits=['1000/day', '400/hour', '30/minute', '2/second'])
 
 db = SQLAlchemy(app)
-socket = SocketIO(app)
+# socket = SocketIO(app)
 
 keys = set()
 blocked_sessions = set()
@@ -82,30 +82,30 @@ def first_login_decorator(function):
     return first_login_checker
 
 
-@socket.on('connect')
-def verify_connection():
-    session_key = session.get('KEY')
-
-    if not session_key:
-        raise ConnectionRefusedError('User not logged')
-
-    key = request.get_json(force=True)['key']
-    if key != session_key:
-        blocked_sessions.add(session_key)
-        raise ConnectionRefusedError('User altered the key. Session is being blocked')
-
-    elif key not in keys:
-        raise ConnectionRefusedError('Key not registered')
-
-    if not all([dict_key in session for dict_key in ['ID', 'ROOM', 'DATETIME', 'NEW', 'TYPE']]):
-        blocked_sessions.add(session_key)
-        raise ConnectionRefusedError('User altered the session. Session is being blocked')
-
-    if session['TYPE'] != 'resident' and session['TYPE'] != 'employee':
-        blocked_sessions.add(session_key)
-        raise ConnectionRefusedError('User altered the session. Session is being blocked')
-
-    join_room(session['ROOM'] + '_' + session['TYPE'], request.sid)
+# @socket.on('connect')
+# def verify_connection():
+#     session_key = session.get('KEY')
+#
+#     if not session_key:
+#         raise ConnectionRefusedError('User not logged')
+#
+#     key = request.get_json(force=True)['key']
+#     if key != session_key:
+#         blocked_sessions.add(session_key)
+#         raise ConnectionRefusedError('User altered the key. Session is being blocked')
+#
+#     elif key not in keys:
+#         raise ConnectionRefusedError('Key not registered')
+#
+#     if not all([dict_key in session for dict_key in ['ID', 'ROOM', 'DATETIME', 'NEW', 'TYPE']]):
+#         blocked_sessions.add(session_key)
+#         raise ConnectionRefusedError('User altered the session. Session is being blocked')
+#
+#     if session['TYPE'] != 'resident' and session['TYPE'] != 'employee':
+#         blocked_sessions.add(session_key)
+#         raise ConnectionRefusedError('User altered the session. Session is being blocked')
+#
+#     join_room(session['ROOM'] + '_' + session['TYPE'], request.sid)
 
 
 @app.before_request
@@ -129,7 +129,7 @@ def session_configuration():
             del session['NEW']
             del session['TYPE']
 
-            disconnect()
+            # disconnect()
 
 
 @app.route(f'/login/{super_user_url}', methods=['POST'])
@@ -168,13 +168,14 @@ def login_super_user():
 
             handler.register_key('super_user', key)
 
+        response['db_time'] = db_time
+
     except json.JSONDecodeError:
         status = 422
         response = {'status': 422, 'result': False, 'event': 'Unable to process the data, not JSON formatted', 'data': {}}
 
     after = time.time()
     response['time'] = after - before
-    response['db_time'] = db_time
 
     return jsonify(response), status
 
@@ -366,16 +367,16 @@ def notification():
     elif request.method == 'POST':
         status, response = handler.register_notification(data, session['ID'], session['KEY'])
 
-        if status == 201:
-            socket.emit('notification', {'type': 'registration', 'data': data}, room=session['ROOM'] + '_resident')
-            socket.emit('notification', {'type': 'registration', 'data': data}, room=session['ROOM'] + '_employee')
+        # if status == 201:
+        #     socket.emit('notification', {'type': 'registration', 'data': data}, room=session['ROOM'] + '_resident')
+        #     socket.emit('notification', {'type': 'registration', 'data': data}, room=session['ROOM'] + '_employee')
 
     else:
         status, response = handler.remove_notification(data)
 
-        if status == 201:
-            socket.emit('notification', {'type': 'deletion', 'data': data}, room=session['ROOM'] + '_resident')
-            socket.emit('notification', {'type': 'deletion', 'data': data}, room=session['ROOM'] + '_employee')
+        # if status == 201:
+        #     socket.emit('notification', {'type': 'deletion', 'data': data}, room=session['ROOM'] + '_resident')
+        #     socket.emit('notification', {'type': 'deletion', 'data': data}, room=session['ROOM'] + '_employee')
 
     after = time.time()
     response['time'] = after - before
@@ -394,11 +395,11 @@ def guest():
 
     elif request.method == 'POST':
         status, response = handler.register_guest(data, session['ID'], session['KEY'])
-        socket.emit('guest', {'type': 'registration', 'data': data}, room=session['ROOM'] + '_employee')
+        # socket.emit('guest', {'type': 'registration', 'data': data}, room=session['ROOM'] + '_employee')
 
     else:
         status, response = handler.remove_guest(data)
-        socket.emit('guest', {'type': 'deletion', 'data': data}, room=session['ROOM'] + '_employee')
+        # socket.emit('guest', {'type': 'deletion', 'data': data}, room=session['ROOM'] + '_employee')
 
     after = time.time()
     response['time'] = after - before
@@ -418,11 +419,11 @@ def service():
 
     elif request.method == 'POST':
         response = handler.register_service(data, session['ID'], session['KEY'])
-        socket.emit('service', {'type': 'registration', 'data': data}, room=session['ROOM'] + '_employee')
+        # socket.emit('service', {'type': 'registration', 'data': data}, room=session['ROOM'] + '_employee')
 
     else:
         response = handler.remove_service(data, session['ID'], session['KEY'])
-        socket.emit('service', {'type': 'deletion', 'data': data}, room=session['ROOM'] + '_employee')
+        # socket.emit('service', {'type': 'deletion', 'data': data}, room=session['ROOM'] + '_employee')
 
     after = time.time()
     response['time'] = after - before
@@ -441,13 +442,13 @@ def rule():
 
     elif request.method == 'POST':
         response = handler.register_rule(data)
-        socket.emit('rule', {'type': 'registration', 'data': data}, room=session['ROOM'] + '_resident')
-        socket.emit('rule', {'type': 'registration', 'data': data}, room=session['ROOM'] + '_employee')
+        # socket.emit('rule', {'type': 'registration', 'data': data}, room=session['ROOM'] + '_resident')
+        # socket.emit('rule', {'type': 'registration', 'data': data}, room=session['ROOM'] + '_employee')
 
     else:
         response = handler.remove_rule(data)
-        socket.emit('rule', {'type': 'deletion', 'data': data}, room=session['ROOM'] + '_resident')
-        socket.emit('rule', {'type': 'deletion', 'data': data}, room=session['ROOM'] + '_employee')
+        # socket.emit('rule', {'type': 'deletion', 'data': data}, room=session['ROOM'] + '_resident')
+        # socket.emit('rule', {'type': 'deletion', 'data': data}, room=session['ROOM'] + '_employee')
 
     after = time.time()
     response['time'] = after - before
@@ -487,13 +488,13 @@ def event():
 
         elif request.method == 'POST':
             status, response = handler.register_event(data, session['ID'], session['KEY'])
-            socket.emit('event', {'type': 'registration', 'data': data}, room=session['ROOM'] + '_resident')
-            socket.emit('event', {'type': 'registration', 'data': data}, room=session['ROOM'] + '_employee')
+            # socket.emit('event', {'type': 'registration', 'data': data}, room=session['ROOM'] + '_resident')
+            # socket.emit('event', {'type': 'registration', 'data': data}, room=session['ROOM'] + '_employee')
 
         else:
             status, response = handler.remove_event(data, session['ID'], session['KEY'])
-            socket.emit('event', {'type': 'deletion', 'data': data}, room=session['ROOM'] + '_resident')
-            socket.emit('event', {'type': 'deletion', 'data': data}, room=session['ROOM'] + '_employee')
+            # socket.emit('event', {'type': 'deletion', 'data': data}, room=session['ROOM'] + '_resident')
+            # socket.emit('event', {'type': 'deletion', 'data': data}, room=session['ROOM'] + '_employee')
 
     except json.JSONDecodeError:
         status = 422
@@ -514,5 +515,5 @@ if __name__ == '__main__':
     # Clear previous run data
     # import database_cleaner
     # redis_db.flushall()
-
-    socket.run(app)
+    app.run()
+    # socket.run(app)
