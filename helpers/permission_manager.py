@@ -62,13 +62,13 @@ class PermissionManager:
             raise RuntimeError
 
     def login_super_user(self, username, password):
-        database_time_start = time.time()
         super_user = SuperUser.query.get(username)
-        database_time_end = time.time()
         if super_user is None:
             return False, 'User not found', None
 
+        database_time_start = time.time()
         if bcrypt.checkpw(password.encode('utf-8'), super_user.password.encode('utf-8')):
+            database_time_end = time.time()
             return True, super_user, super_user.username, database_time_end - database_time_start
 
         return False, 'User passowrd does not match', None
