@@ -77,6 +77,7 @@ class PermissionManager:
             with conn.cursor() as cursor:
                 cursor.execute(f'SELECT username FROM super_user WHERE super_user.username = %s;', (username,))
                 super_user = cursor.fetchone()[0]
+                print(super_user)
 
         db_end_time = time.time()
 
