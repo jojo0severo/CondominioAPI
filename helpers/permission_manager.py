@@ -76,15 +76,19 @@ class PermissionManager:
         with psycopg2.connect(user=user, password=password_, host=host, port=port, dbname=database) as conn:
             with conn.cursor() as cursor:
                 cursor.execute(f'SELECT username, password FROM super_user WHERE super_user.username = %s;', (username,))
-                super_user = cursor.fetchone()[0]
+                super_user = cursor.fetchone()
 
         db_end_time = time.time()
 
         if super_user is None:
             return False, 'User not found', None
 
+        class batata:
+            def __init__(self, _username):
+                self.username = _username
+
         if bcrypt.checkpw(password.encode('utf-8'), super_user[1].encode('utf-8')):
-            return True, super_user[0], super_user[0], db_end_time - db_start_time
+            return True, batata(super_user[0]), super_user[0], db_end_time - db_start_time
 
         return False, 'User passowrd does not match', None
 
