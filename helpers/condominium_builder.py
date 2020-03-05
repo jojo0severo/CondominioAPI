@@ -5,8 +5,8 @@ from model.address import Address
 from model.condominium import Condominium
 from model.tower import Tower
 from model.apartment import Apartment
-from setup import db
 from sqlalchemy import exc, and_
+from setup import db
 
 
 def parse_tower_list(tower_list_obj, condominium_id):
@@ -70,40 +70,35 @@ def build_address(condominium_obj):
         db.session.rollback()
         city = City.query.filter(and_(City.name == condominium_obj['CityName'], City.state_id == state.id)).first()
 
-    try:
-        address = Address(street_name=condominium_obj['StreetName'], neighbourhood=condominium_obj['Neighbourhood'], city_id=city.id)
-        db.session.add(address)
-        db.session.flush()
+    address = Address(street_name=condominium_obj['StreetName'], neighbourhood=condominium_obj['Neighbourhood'], city_id=city.id)
+    db.session.add(address)
+    db.session.flush()
 
-        return address.id
-
-    except exc.IntegrityError as e:
-        db.session.rollback()
-        raise ValueError(e)
+    return address.id
 
 
 def build(json_structure):
-    for condominium_name in json_structure:
-        condominium_obj = json_structure[condominium_name]
-
-        address_id = build_address(condominium_obj)
-
-        condominium = Condominium(name=condominium_name,
-                                  street_number=condominium_obj['StreetNumber'],
-                                  photo_location=condominium_obj.get('PhotoLocation'),
-                                  address_id=address_id)
-        db.session.add(condominium)
-        db.session.flush()
-
-        for key in condominium_obj['Condominium']:
-            if key == 'Towers':
-                parse_tower_list(condominium_obj['Condominium'][key], condominium.id)
-            else:
-                parse_tower(condominium_obj['Condominium'][key], key, condominium.id)
-
     try:
-        db.session.commit()
-        return True
+        for condominium_name in json_structure:
+            condominium_obj = json_structure[condominium_name]
+
+            address_id = build_address(condominium_obj)
+
+            condominium = Condominium(name=condominium_name,
+                                      street_number=condominium_obj['StreetNumber'],
+                                      photo_location=condominium_obj.get('PhotoLocation'),
+                                      address_id=address_id)
+            db.session.add(condominium)
+            db.session.flush()
+
+            for key in condominium_obj['Condominium']:
+                if key == 'Towers':
+                    parse_tower_list(condominium_obj['Condominium'][key], condominium.id)
+                else:
+                    parse_tower(condominium_obj['Condominium'][key], key, condominium.id)
+
+            db.session.commit()
+            return True
 
     except exc.IntegrityError:
         db.session.rollback()
