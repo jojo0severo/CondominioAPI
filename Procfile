@@ -1,1 +1,1 @@
-web: uwsgi --module setup:app -w 1
+web: uwsgi uwsgi.ini
