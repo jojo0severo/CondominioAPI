@@ -84,8 +84,8 @@ class PermissionManager:
         if super_user is None:
             return False, 'User not found', None
 
-        if bcrypt.checkpw(password.encode('utf-8'), super_user[1].encode('utf-8')):
-            return True, super_user, super_user.username, db_end_time - db_start_time
+        if bcrypt.checkpw(password.encode('utf-8'), super_user.encode('utf-8')):
+            return True, super_user, super_user, db_end_time - db_start_time
 
         return False, 'User passowrd does not match', None
 
