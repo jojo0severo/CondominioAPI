@@ -11,6 +11,7 @@ from model.super_user import SuperUser
 from helpers.permission_levels import PermissionLevel
 # from helpers.condominium_builder import build
 from sqlalchemy.sql import select
+import time
 from setup import db
 import bcrypt
 
@@ -63,13 +64,15 @@ class PermissionManager:
             raise RuntimeError
 
     async def login_super_user(self, username, password):
+        db_start_time = time.time()
         super_user = await db.fetch_one(select([SuperUser]).where(SuperUser.username == username))
+        db_end_time = time.time()
 
         if super_user is None:
             return False, 'User not found', None
 
         if bcrypt.checkpw(password.encode('utf-8'), super_user.password.encode('utf-8')):
-            return True, super_user, super_user.username
+            return True, super_user, super_user.username, db_end_time - db_start_time
 
         return False, 'User passowrd does not match', None
 

@@ -43,7 +43,7 @@ async def login_super_user(request):
     try:
         data = await request.json()
 
-        status, response, id_ = await handler.login_super_user(data)
+        status, response, id_, db_time = await handler.login_super_user(data)
 
         if status == 200:
             key = secrets.token_urlsafe(20)
@@ -59,6 +59,7 @@ async def login_super_user(request):
 
     after = time.time()
     response['time'] = after - before
+    response['db_time'] = db_time
 
     return JSONResponse(response, status_code=status)
 
