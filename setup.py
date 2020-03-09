@@ -132,6 +132,11 @@ def session_configuration():
             disconnect()
 
 
+@app.route('/ping', methods=['GET'])
+def ping():
+    return 'pong', 200
+
+
 @app.route(f'/login/{super_user_url}', methods=['POST'])
 def login_super_user():
     set_handler()
