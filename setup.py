@@ -515,8 +515,4 @@ def handle_too_many_requests(e):
 
 
 if __name__ == '__main__':
-    # Clear previous run data
-    # import database_cleaner
-    # redis_db.flushall()
-
     socket.run(app)
