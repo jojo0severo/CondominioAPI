@@ -54,7 +54,7 @@ def session_decorator(function):
 
         data = request.get_json(force=True)
         if 'key' not in [str(key).lower() for key in data.keys()]:
-            return {'status': 400, 'result': False, 'event': 'Missing information', 'data': {}}, 400
+            return {'status': 400, 'result': False, 'event': 'Missing key', 'data': {}}, 400
 
         key = data['key']
 
