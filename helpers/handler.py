@@ -66,10 +66,10 @@ class Handler:
         username = data['username']
         password = data['password']
 
-        result, info, id_, time = self.permission_manager.login_super_user(username, password)
+        result, info, id_ = self.permission_manager.login_super_user(username, password)
         status, response = self.formatter.format_super_user_connection(result, info, {'success': 200, 'failure': 401})
 
-        return status, response, id_, time
+        return status, response, id_
 
     @runtime_error_decorator
     @key_error_decorator
@@ -122,9 +122,6 @@ class Handler:
         else:
             photo_location = data['photo_location']
 
-        if 'condominium_id' in data:
-            father_id = int(base64.urlsafe_b64decode(data['apartment_id']).decode('ascii'))
-
         result, info = self.permission_manager.register_resident(cpf, name, birthday, photo_location, father_id, user_key)
         response = self.formatter.format_resident_connection(result, info, {'success': 201, 'failure': 409, 'empty': 404})
 
@@ -137,7 +134,7 @@ class Handler:
     def register_resident_user(self, data, father_id, user_key):
         username = data['username']
         password = bcrypt.hashpw(data['password'].encode('utf-8'), bcrypt.gensalt(rounds=6)).decode('utf-8')
-        apartment_id = data['apartment_id']
+        apartment_id = int(base64.urlsafe_b64decode(data['apartment_id']).decode('ascii'))
 
         result, info = self.permission_manager.register_resident_user(username, password, apartment_id, father_id, user_key)
         if result:
