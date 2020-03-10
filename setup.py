@@ -141,7 +141,7 @@ def login_super_user():
     try:
         data = request.get_json(force=True)
 
-        status, response, id_, db_time = handler.login_super_user(data)
+        status, response, id_ = handler.login_super_user(data)
 
         if session.get('KEY') is not None and status == 200:
             status = 206
@@ -167,8 +167,6 @@ def login_super_user():
             session['TYPE'] = 'employee'
 
             handler.register_key('super_user', key)
-
-        response['db_time'] = db_time
 
     except json.JSONDecodeError:
         status = 422

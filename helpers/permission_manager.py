@@ -16,7 +16,7 @@ import bcrypt
 
 def _user_key_decorator(function):
     def check_user_key(self, *args, **kwargs):
-        if args[1] not in self.users_permission_level:
+        if args[-1] not in self.users_permission_level:
             return False, 'User session not registered'
 
         return function(self, *args)
@@ -66,10 +66,8 @@ class PermissionManager:
         if super_user is None:
             return False, 'User not found', None
 
-        database_time_start = time.time()
         if bcrypt.checkpw(password.encode('utf-8'), super_user.password.encode('utf-8')):
-            database_time_end = time.time()
-            return True, super_user, super_user.username, database_time_end - database_time_start
+            return True, super_user, super_user.username
 
         return False, 'User passowrd does not match', None
 
